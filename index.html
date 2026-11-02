@@ -365,7 +365,23 @@ body.touring{overflow:hidden}
 .pomoset>div{background:var(--card2);border-radius:14px;padding:8px 8px 8px 12px;display:flex;flex-direction:column;gap:4px}
 .pomoset .step{justify-content:space-between;gap:4px}.pomoset .step b{font-size:15px;white-space:nowrap;min-width:0}
 .pomoset .btn.icon{width:34px;height:34px;background:var(--bg)}
-.timer.brk #tc{stroke:var(--ok)}
+/* Estudiar ahora (Clase): duración con barra, hora de fin y objetivos de la sesión */
+.sesdur{display:flex;align-items:flex-end;justify-content:space-between;margin:18px 0 8px}
+.sesdur .num{font-size:40px}
+.range{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:none;cursor:pointer;margin:0}
+.range::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--acc) var(--p,50%),var(--track) var(--p,50%))}
+.range::-moz-range-track{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--acc) var(--p,50%),var(--track) var(--p,50%))}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:0;margin-top:-9px;box-shadow:0 2px 8px rgba(0,0,0,.35);transition:transform .2s var(--spring)}
+.range::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:0;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.range:active::-webkit-slider-thumb{transform:scale(1.15)}
+.sgoal{padding:9px 0}.sgoal:last-of-type{margin-bottom:8px}
+.ses .sgoal+.row,.ses label.f+.row{margin-top:0}
+.tgoals{margin:-4px 0 14px;padding:4px 14px;border-radius:14px;background:var(--card2)}
+.tgoals .item{padding:9px 0}
+/* Aviso de lo que el plan ha recolocado */
+.missed{display:flex;gap:10px;align-items:flex-start;padding:12px 8px 12px 14px;margin-bottom:12px;border-radius:16px;background:color-mix(in srgb,var(--acc) 10%,var(--card));border:1px solid color-mix(in srgb,var(--acc) 30%,var(--line));font-size:13.5px;line-height:1.4}
+.missed>svg{color:var(--acc2);margin-top:1px}.missed b{display:block;font-size:14.5px;margin-bottom:2px}.missed span{color:var(--mut)}
+.missed .navb{margin:-6px 0 0}.timer.brk #tc{stroke:var(--ok)}
 .timer.brk .t b{color:var(--ok);animation:breathe 4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -833,6 +849,8 @@ function defaults(){return{
   intro:{tour:0,steps:0},
   // Día en que empiezan el 2º y el 3º trimestre (vacío = enero y abril); pomo = descansos en el temporizador
   trimStart:{t2:null,t3:null},pomo:false,pomoW:25,pomoR:5,
+  // sesMin = duración elegida en «Estudiar ahora»; planSnap y missed = lo que se quedó sin hacer otro día
+  sesMin:45,planSnap:null,missed:null,
   topics:{},notes:{},memos:[],files:[],timer:null,xpLog:[],del:{},resetAt:0,updatedAt:0}}
 // Datos guardados antes de existir el cuestionario: ya están configurados.
 // Quien ya usaba la app antes de las ayudas no las ve (puede abrir la guía desde Ajustes).
@@ -1025,6 +1043,22 @@ function prep(e){
   return{n,all,W,start,from,days,quota,late:start<t&&quota>150}}
 function topicNames(e){const tp=S.topics[e.subj]||[];if(!e.topicIds||!e.topicIds.length)return null;const ns=e.topicIds.map(id=>tp.find(x=>x.id===id)?.t).filter(Boolean);return ns.length?ns:null}
 
+/* ====== Lo que se quedó sin hacer ======
+   Cada día se apunta qué bloques de exámenes y tareas tocaban (S.planSnap). Al abrir la app otro día se miran
+   los que no se marcaron y siguen pendientes: el plan ya los reparte solo (prep() recalcula la cuota de cada
+   día), así que solo hay que decírselo al usuario (S.missed), para que se fíe del plan. */
+function snapPlan(){const t=today(),sn=S.planSnap;
+  if(sn&&sn.day<t){const miss=(sn.blocks||[]).filter(b=>{const e=evById(b.ev);return !isDone(sn.day,b.key)&&e&&e.grade==null&&!e.done&&e.date>=t});
+    S.missed=miss.length?{day:t,from:sn.day,n:miss.length,min:sum(miss.map(b=>b.min)),subjs:[...new Set(miss.map(b=>b.subj))]}:null}
+  const nw={day:t,blocks:planFor(t).blocks.filter(b=>b.eventId).map(b=>({key:b.key,ev:b.eventId,subj:b.subj,min:b.min}))};
+  if(JSON.stringify(nw)!==JSON.stringify(sn)){S.planSnap=nw;save()}}
+function vMissed(){const M=S.missed,t=today();if(!M||M.day!==t||M.seen)return '';
+  const when=diff(M.from,t)===1?'Ayer':'El '+WDL[parse(M.from).getDay()],ns=M.subjs.map(id=>sb(id)?.name).filter(Boolean);
+  const names=ns.length>2?ns.slice(0,2).join(', ')+` y ${ns.length-2} más`:ns.join(' y ');
+  return `<div class="missed">${ic('cal','s')}<div style="flex:1;min-width:0"><b>${when} ${M.n===1?'quedó 1 bloque':`quedaron ${M.n} bloques`} sin hacer</b>
+    <span>${names?h(names)+' · ':''}${fmtMin(M.min)}. Ya ${M.n===1?'lo he':'los he'} repartido en los próximos días antes de cada examen; no tienes que hacer nada.</span></div>
+    <button class="navb" data-act="missedOk" aria-label="Entendido">${ic('x','s')}</button></div>`}
+
 /* ====== Generador del plan diario ====== */
 // Cuánto te juegas en una materia según tu media: por debajo de 7,5 sube la prioridad (hasta ×1,35 con
 // suspensos) y con notas altas baja un poco (×0,85 con un 9). Si no llegas a tu objetivo, sube algo más.
@@ -1149,6 +1183,7 @@ function vInicio(){
   if(bl.length)o+=`<button class="link" data-act="tab" data-t="plan">Plan de hoy: ${done} de ${bl.length} · ${fmtMin(P.total)} ${ic('right','s')}</button>`;
   if(P.over)o+=`<div class="warnbox">${ic('alert','s')}<div>Hoy necesitas <b>${fmtMin(P.total)}</b> y tenías ${fmtMin(P.avail)} libres: hay un examen cerca con mucho contenido. Si no llegas, lo que falte se reparte en los días siguientes. <button class="link left" style="display:inline;margin:0;font-size:13.5px" data-act="availedit">Cambiar mi tiempo libre</button></div></div>`;
   o+='</div>';
+  o+=vMissed();
   o+=vGuide();
   const pg=pendingGrades();
   if(pg.length)o+=`<div class="card tight"><div class="between"><div class="eyebrow">¿Qué has sacado?</div><span class="pill warm">${pg.length} sin nota</span></div>
@@ -1185,7 +1220,7 @@ function vGuide(){
 // También se abre desde Ajustes. Se lleva fuera de #main para que los repintados no la toquen.
 const TOUR=[
   {q:'.tb[data-t="inicio"]',t:'Inicio',d:'Lo que te toca hoy, tu racha y el calendario con tus exámenes y tareas.'},
-  {q:'.tb[data-t="clase"]',t:'Clase',d:'Tus materias una a una: cómo vas, el temario y tus apuntes de cada una.'},
+  {q:'.tb[data-t="clase"]',t:'Clase',d:'Para ponerte a estudiar cuando quieras, con temporizador y objetivos, y ver tus materias una a una.'},
   {q:'.tb[data-t="plan"]',t:'Plan',d:'Qué estudiar cada día, numerado de más a menos importante. Aquí también cambias tu tiempo libre.'},
   {q:'.tb[data-t="perfil"]',t:'Perfil',d:'Tus medias, las gráficas, la calculadora de la PAU y los ajustes.'},
   {q:'.fab',t:'El botón +',d:'Para añadir exámenes, tareas o notas, o ponerte a estudiar con el temporizador.'},
@@ -1332,9 +1367,32 @@ function openSched(){
   $('#sxin').addEventListener('keydown',e=>{if(e.key==='Enter')A.sxadd()})}
 let schedEd=1;
 
+// Estudiar ahora (arriba de Clase): materia, cuánto tiempo (con la hora a la que acabas) y objetivos opcionales
+// para esa sesión, que luego se tachan en el temporizador. SES es el borrador; la duración se recuerda (S.sesMin).
+let SES={subj:null,goals:[]};
+// Descansos que caerían en una sesión de m minutos (con los descansos activados)
+const pomoBreaks=m=>S.pomo?Math.max(0,Math.floor((m-10)/POMO.work)):0;
+function sesEndTxt(m){const nb=pomoBreaks(m),d=new Date(Date.now()+(m+nb*POMO.rest)*60000);
+  return `Terminas a las <b>${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</b>${nb?` · con ${nb} ${nb===1?'descanso':'descansos'}`:''}`}
+function vSes(){
+  if(S.timer)return `<div class="card ses"><div class="eyebrow">Estudiar ahora</div><div class="big" style="font-size:21px">Tienes una sesión en marcha</div>
+    <div class="mut small" style="margin-bottom:14px">${h(sb(S.timer.subj).name)} · ${S.timer.min} min</div><button class="btn" data-act="timeropen">${ic('clock','s')} Volver al temporizador</button></div>`;
+  const t=today(),nb=planFor(t).blocks.find(b=>!isDone(t,b.key));
+  if(!SES.subj||!sb(SES.subj))SES.subj=nb?nb.subj:SUBJ()[0].id;
+  const m=S.sesMin||45;
+  return `<div class="card ses"><div class="eyebrow">Estudiar ahora</div>
+   <div class="chips" style="margin-top:12px">${SUBJ().map(s=>`<button class="${s.id===SES.subj?'on':''}" data-act="sesSubj" data-s="${s.id}"><span class="dot" style="background:${col(s)}"></span>${h(s.name)}</button>`).join('')}</div>
+   <div class="sesdur"><label for="sesMin" class="mut small">Cuánto tiempo</label><div><b class="num" id="sesMinV">${m}</b> <span class="mut">min</span></div></div>
+   <input type="range" id="sesMin" class="range" min="5" max="180" step="5" value="${m}" aria-label="Minutos de la sesión" style="--p:${(m-5)/175*100}%">
+   <div class="mut small" id="sesEnd" style="margin-top:6px">${sesEndTxt(m)}</div>
+   <label class="f" for="sesGoal">Objetivos de esta sesión <span class="dim">(opcional)</span></label>
+   ${SES.goals.map((g,i)=>`<div class="item sgoal"><span class="dot" style="background:${col(sb(SES.subj))}"></span><div style="flex:1;min-width:0;overflow-wrap:anywhere">${h(g)}</div><button class="navb" data-act="sesDelGoal" data-i="${i}" aria-label="Quitar objetivo">${ic('x','s')}</button></div>`).join('')}
+   <div class="row"><input class="inp" id="sesGoal" placeholder="p. ej. Hacer los ejercicios 3 a 7" maxlength="120"><button class="btn icon" data-act="sesAddGoal" aria-label="Añadir objetivo">${ic('plus')}</button></div>
+   <button class="btn" style="margin-top:16px" data-act="sesGo">${ic('play')} Empezar sesión</button></div>`}
+
 function vClase(){
   const t=today(),m=minsBy(addDays(t,-6),t);
-  let o=`<h2 style="margin-top:4px">Tus materias</h2>`;
+  let o=vSes()+`<h2>Tus materias</h2>`;
   if(!graded().length&&!Object.values(S.topics).some(x=>x.length))o+=`<div class="tiphint">${ic('book','s')}<span>Toca una materia para ver cómo vas, apuntar su temario y guardar apuntes.</span></div>`;
   for(const s of SUBJ()){const a=subjAvg(s.id),n=subjGrades(s.id).length,nx=upcoming().find(e=>e.subj===s.id),tp=S.topics[s.id]||[],td=tp.filter(x=>x.done).length;
     let prep_='';if(nx){const p=prep(nx),f=Math.min(1,p.all/p.n);
@@ -1389,6 +1447,7 @@ function vPlan(){
      <span class="wkbar"><i class="av" style="height:${p.avail/mx*100}%"></i><i class="pl ${p.over?'over':''}" style="height:${p.total/mx*100}%"></i></span>
      <span class="small ${p.over?'warnc':'mut'}">${p.total?fmtShort(p.total):'—'}</span></button>`}).join('')}</div>
    <div class="row mut small" style="gap:14px"><span class="row" style="gap:6px"><span class="dot" style="background:var(--acc)"></span>estudio</span><span class="row" style="gap:6px"><span class="dot" style="background:var(--free)"></span>tiempo libre</span><span class="row" style="gap:6px"><span class="dot" style="background:var(--warn)"></span>se pasa</span></div></div>`;
+  if(si===0)o+=vMissed();
   // Día elegido
   const done=P.blocks.filter(b=>isDone(planSel,b.key)).length;
   o+=`<div class="card"><div class="between"><div style="font-weight:800;font-size:18px">${si===0?'Hoy':si===1?'Mañana':dLong(planSel)}</div><span class="small mut">${P.blocks.length?`${done} de ${P.blocks.length} hechos`:''}</span></div>
@@ -1701,12 +1760,6 @@ function openGradesList(){
   sheet(`<div class="between"><h2 style="margin:0">Exámenes sin nota</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <div style="margin-top:10px">${pendingGrades().map(e=>`<div class="item tap" data-act="grade" data-id="${e.id}"><span class="cbar" style="background:${col(sb(e.subj))}"></span><div style="flex:1;min-width:0"><div style="font-weight:650" class="ell">${h(sb(e.subj).name)}</div><div class="mut small">${h(e.title)} · ${dShort(e.date)}</div></div>${ic('right')}</div>`).join('')}</div>`)}
 
-function openFree(){
-  sheet(`<div class="between"><h2 style="margin:0">Estudiar ahora</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-   <label class="f">Materia</label>${subjChips(SUBJ()[0].id)}
-   <label class="f">Duración</label><div class="seg" id="durs" style="display:flex">${[25,45,60,90].map((n,i)=>`<button style="flex:1" class="${i===0?'on':''}" data-act="dur" data-n="${n}">${n} min</button>`).join('')}</div>
-   <button class="btn" style="margin-top:20px" data-act="freego">${ic('play')} Empezar</button>`)}
-
 function openAddSubj(){
   sheet(`<div class="between"><h2 style="margin:0">Nueva materia</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <label class="f" for="nsn">Nombre</label><input class="inp" id="nsn" placeholder="p. ej. Química">
@@ -1716,7 +1769,9 @@ function openAddSubj(){
 /* ====== Temporizador ====== */
 let timerInt=null,wake=null;
 const elapsed=()=>S.timer?S.timer.acc+(S.timer.paused?0:Date.now()-S.timer.start):0;
-function startTimer(b){S.timer={key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false,pomo:!!S.pomo,brks:0,brk:null};save();openTimer()}
+function startTimer(b){S.timer={key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false,pomo:!!S.pomo,brks:0,brk:null,goals:b.goals||[]};save();openTimer()}
+// Objetivos de la sesión dentro del temporizador: se tachan al tocarlos
+const tGoalsHtml=T=>(T.goals||[]).map((g,i)=>`<div class="item tgoal"><button class="check ${g.done?'on':''}" data-act="tgoal" data-i="${i}" aria-label="Hecho">${g.done?ic('check','s'):''}</button><div style="flex:1;min-width:0;overflow-wrap:anywhere;${g.done?'color:var(--mut);text-decoration:line-through':''}">${h(g.t)}</div></div>`).join('');
 // Descansos (si están activados): cada X min de estudio, Y de descanso (25 y 5 si no se cambian; se ajustan
 // en la hoja del temporizador). El descanso es una pausa que se reanuda sola, así que no cuenta como estudio.
 // No se para si quedan menos de 10 min.
@@ -1732,6 +1787,7 @@ function openTimer(){
    <div style="text-align:center;font-weight:750;font-size:18px;margin:8px 0 0;text-wrap:balance">${h(T.task)}</div>
    <div class="timer"><svg width="260" height="260" viewBox="0 0 260 260" style="transform:rotate(-90deg)"><circle cx="130" cy="130" r="${R}" stroke="var(--track)" stroke-width="10" fill="none"/><circle id="tc" cx="130" cy="130" r="${R}" stroke="${col(s)}" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
    <div class="t"><div><b id="tt">00:00</b><div class="mut small" id="ts"></div></div></div></div>
+   ${T.goals&&T.goals.length?`<div class="tgoals" id="tgoals">${tGoalsHtml(T)}</div>`:''}
    <div class="grid2"><button class="btn ghost" data-act="tpause" id="tp"></button><button class="btn" data-act="tfinish">${ic('check')} Terminar</button></div>
    <button class="pomo ${T.pomo?'on':''}" data-act="tpomo" id="tpomo" role="switch" aria-checked="${!!T.pomo}"><span><b>Descansos</b><small id="pomotx">${POMO.rest} min cada ${POMO.work} min de estudio</small></span><i></i></button>
    <div class="pomoset">${[['w','Estudio',POMO.work],['r','Descanso',POMO.rest]].map(([k,l,v])=>`<div><span class="mut small">${l}</span>
@@ -1754,7 +1810,8 @@ function finishTimer(){
   const T=S.timer,m=Math.max(1,Math.round(elapsed()/60000));
   S.log.push({id:uid(),date:today(),subj:T.subj,min:m,eventId:T.eventId,key:T.key});
   let xp=m;if(T.key&&m>=T.min*0.6){markDone(T.day,T.key);xp+=15}
-  S.timer=null;try{wake?.release()}catch(e){}save();closeSheet();addXP(xp,`${fmtMin(m)} de ${sb(T.subj).name}`);render()}
+  const gs=T.goals||[],gd=gs.filter(g=>g.done).length;
+  S.timer=null;try{wake?.release()}catch(e){}save();closeSheet();addXP(xp,`${fmtMin(m)} de ${sb(T.subj).name}`+(gs.length?` · ${gd} de ${gs.length} objetivos`:''));render()}
 
 /* ====== Acciones ====== */
 const A={
@@ -1777,7 +1834,6 @@ const A={
   lv:(d,el)=>{F.level=d.k;el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));updEst()},
   tpsel:(d,el)=>{const i=F.topicIds.indexOf(d.id);i>=0?F.topicIds.splice(i,1):F.topicIds.push(d.id);el.classList.toggle('on');if(F.topicIds.length){F.temas=F.topicIds.length;$('#tnum').textContent=F.temas}updEst()},
   eff:(d,el)=>{el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));updXP()},
-  dur:(d,el)=>{el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el))},
   saveev:()=>{const ex=F.kind==='examen',t=$('#evt').value.trim()||(ex?'Examen':'Tarea'),date=$('#evd').value||today();
     const fields={title:t,date,subj:picked()||F.subj,hours:num($('#evh').value)};
     if(ex)Object.assign(fields,{temas:F.temas,level:F.level,topicIds:F.topicIds,w:F.w});
@@ -1794,8 +1850,17 @@ const A={
     const n=+$('#effs .on').dataset.n;let e;
     if(d.id)e=evById(d.id);else{e={id:uid(),kind:'examen',subj:picked(),title:$('#evt').value.trim()||'Examen',date:$('#evd').value||today(),temas:1,level:'normal'};S.events.push(e)}
     e.grade=g;e.effort=n;e.u=Date.now();save();closeSheet();addXP(gradeXP(g,n),`${fmt(g,1)} en ${sb(e.subj).name}`);render()},
-  free:()=>openFree(),
-  freego:()=>startTimer({subj:picked(),min:+$('#durs .on').dataset.n,task:'Sesión libre'}),
+  // «Estudiar ahora» lleva a la pestaña Clase, donde está la sesión
+  free:()=>A.tab({t:'clase'}),
+  sesSubj:d=>{if(SES.subj===d.s)return;SES.subj=d.s;render()},
+  sesAddGoal:()=>{const v=$('#sesGoal').value.trim();if(!v)return;if(SES.goals.length>=8){toast('Como mucho 8 objetivos por sesión');return}
+    SES.goals.push(v);render();setTimeout(()=>$('#sesGoal')?.focus(),30)},
+  sesDelGoal:d=>{SES.goals.splice(+d.i,1);render()},
+  sesGo:()=>{const v=$('#sesGoal')?.value.trim();if(v&&SES.goals.length<8)SES.goals.push(v);
+    startTimer({subj:SES.subj,min:S.sesMin||45,task:'Sesión libre',goals:SES.goals.map(t=>({t,done:false}))});SES.goals=[];render()},
+  timeropen:()=>{if(S.timer)openTimer()},
+  tgoal:d=>{const g=S.timer?.goals?.[+d.i];if(!g)return;g.done=!g.done;save();const el=$('#tgoals');if(el){el.innerHTML=tGoalsHtml(S.timer);if(g.done)el.querySelectorAll('.check')[+d.i].classList.add('fx')}},
+  missedOk:()=>{if(S.missed)S.missed.seen=1;save();render()},
   tpause:()=>{const T=S.timer;if(T.brk)T.brk=null;if(T.paused){T.start=Date.now();T.paused=false}else{T.acc+=Date.now()-T.start;T.paused=true}save();$('#tp').dataset.lb=''},
   // Activar o quitar los descansos; los que ya habrían tocado no salen de golpe
   tpomo:()=>{const T=S.timer;T.pomo=S.pomo=!T.pomo;T.brks=Math.floor(elapsed()/60000/POMO.work);if(!T.pomo&&T.brk){T.brk=null;T.paused=false;T.start=Date.now()}
@@ -1838,7 +1903,7 @@ const A={
   obDone:()=>obFinish(),
   guideHide:()=>{S.intro.steps=1;save();render()},
   guideSched:()=>{schedEd=1;openSched()},
-  guideStudy:()=>{const t=today(),b=planFor(t).blocks.find(x=>!isDone(t,x.key));b?startTimer(b):openFree()},
+  guideStudy:()=>{const t=today(),b=planFor(t).blocks.find(x=>!isDone(t,x.key));b?startTimer(b):A.tab({t:'clase'})},
   tourGo:()=>{const w=sheetOpen();closeSheet();offerHide();setTimeout(tourStart,w?280:120)},
   tourNo:()=>{S.intro.tour=1;save();offerHide();toast('Cuando quieras, está en Perfil → Ajustes')},
   tourNext:()=>{if(tourI<0)return;if(tourI>=TOUR.length-1)return tourEnd();tourI++;tourShow(true)},
@@ -1917,6 +1982,7 @@ function render(){
   document.body.classList.toggle('onbm',!S.setup);
   if(!S.setup){obSync();setTop('');
     setMain(syncReady?vOnb():`<div class="loading" aria-label="Cargando"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="var(--logo-bg)"/><path d="M20 45 32 14 44 45 32 37.5Z" fill="var(--logo-fg)"/><path d="M32 14 44 45 32 37.5Z" fill="var(--logo-fg2)"/></svg></div>`,syncReady?'onb'+OB.step:'load');return}
+  snapPlan();
   setTop(vTop());
   setMain(tab==='clase'?vClase():tab==='plan'?vPlan():tab==='perfil'?vPerfil():vInicio(),tab);
   applyFX();
@@ -1927,7 +1993,10 @@ render();
 if(S.timer)openTimer();
 setTimeout(maybeAskGrade,1500);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheetOpen()){render();maybeAskGrade()}});
-document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='onbExtra')A.obAdd()});
+document.addEventListener('keydown',ev=>{if(ev.key!=='Enter')return;if(ev.target.id==='onbExtra')A.obAdd();else if(ev.target.id==='sesGoal'){ev.preventDefault();A.sesAddGoal()}});
+// La barra de duración de «Estudiar ahora» se actualiza sin repintar la pestaña
+document.addEventListener('input',ev=>{if(ev.target.id!=='sesMin')return;const m=+ev.target.value;S.sesMin=m;
+  ev.target.style.setProperty('--p',(m-5)/175*100+'%');$('#sesMinV').textContent=m;$('#sesEnd').innerHTML=sesEndTxt(m);save()});
 initSync();
 // Si la sincronización no contesta, el cuestionario sale igualmente
 setTimeout(setSyncReady,5000);
