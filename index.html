@@ -360,6 +360,11 @@ body.touring{overflow:hidden}
 .pomo i{flex:none;width:44px;height:26px;border-radius:26px;background:var(--card2);border:1px solid var(--line);position:relative;transition:background-color .25s ease,border-color .25s ease}
 .pomo i::before{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--mut);transition:transform .3s var(--spring),background-color .25s ease}
 .pomo.on i{background:var(--acc);border-color:var(--acc)}.pomo.on i::before{transform:translateX(18px);background:#fff}
+.pomoset{display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.pomo.on+.pomoset{display:grid;animation:rise .35s var(--ease) backwards}
+.pomoset>div{background:var(--card2);border-radius:14px;padding:8px 8px 8px 12px;display:flex;flex-direction:column;gap:4px}
+.pomoset .step{justify-content:space-between;gap:4px}.pomoset .step b{font-size:15px;white-space:nowrap;min-width:0}
+.pomoset .btn.icon{width:34px;height:34px;background:var(--bg)}
 .timer.brk #tc{stroke:var(--ok)}
 .timer.brk .t b{color:var(--ok);animation:breathe 4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
@@ -827,7 +832,7 @@ function defaults(){return{
   // Ayudas para empezar: tour = guía de la app ofrecida, steps = tarjeta de primeros pasos (1 = ya no sale)
   intro:{tour:0,steps:0},
   // Día en que empiezan el 2º y el 3º trimestre (vacío = enero y abril); pomo = descansos en el temporizador
-  trimStart:{t2:null,t3:null},pomo:false,
+  trimStart:{t2:null,t3:null},pomo:false,pomoW:25,pomoR:5,
   topics:{},notes:{},memos:[],files:[],timer:null,xpLog:[],del:{},resetAt:0,updatedAt:0}}
 // Datos guardados antes de existir el cuestionario: ya están configurados.
 // Quien ya usaba la app antes de las ayudas no las ve (puede abrir la guía desde Ajustes).
@@ -1706,14 +1711,15 @@ function openAddSubj(){
 let timerInt=null,wake=null;
 const elapsed=()=>S.timer?S.timer.acc+(S.timer.paused?0:Date.now()-S.timer.start):0;
 function startTimer(b){S.timer={key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false,pomo:!!S.pomo,brks:0,brk:null};save();openTimer()}
-// Descansos (si están activados): cada 25 min de estudio, 5 de descanso. El descanso es una pausa que
-// se reanuda sola, así que no cuenta como estudio. No se para si quedan menos de 10 min.
-const POMO={work:25,rest:5};
+// Descansos (si están activados): cada X min de estudio, Y de descanso (25 y 5 si no se cambian; se ajustan
+// en la hoja del temporizador). El descanso es una pausa que se reanuda sola, así que no cuenta como estudio.
+// No se para si quedan menos de 10 min.
+const POMO={get work(){return S.pomoW||25},get rest(){return S.pomoR||5}},POMO_LIM={w:[10,120],r:[5,30]};
 function pomoTick(){const T=S.timer;if(!T)return;
   if(T.brk){if(Date.now()>=T.brk){T.brk=null;T.paused=false;T.start=Date.now();save();toast('¡Fin del descanso! A seguir');try{navigator.vibrate?.([120,80,120])}catch(e){}}return}
   if(!T.pomo||T.paused)return;
   const e=elapsed()/60000,n=Math.floor(e/POMO.work);
-  if(n>(T.brks||0)){T.brks=n;if(T.min-e>=10){T.acc+=Date.now()-T.start;T.paused=true;T.brk=Date.now()+POMO.rest*60000;save();try{navigator.vibrate?.(200)}catch(e){}}}}
+  if(n>(T.brks||0)){T.brks=n;if(T.min-e>=10){T.acc+=Date.now()-T.start;T.paused=true;T.brkLen=POMO.rest;T.brk=Date.now()+POMO.rest*60000;save();try{navigator.vibrate?.(200)}catch(e){}}}}
 function openTimer(){
   const T=S.timer,s=sb(T.subj),R=110,C=2*Math.PI*R;
   sheet(`<div class="meta" style="justify-content:center;margin-top:0"><span class="dot" style="background:${col(s)}"></span>${h(s.name)} · ${T.min} min</div>
@@ -1721,7 +1727,9 @@ function openTimer(){
    <div class="timer"><svg width="260" height="260" viewBox="0 0 260 260" style="transform:rotate(-90deg)"><circle cx="130" cy="130" r="${R}" stroke="var(--track)" stroke-width="10" fill="none"/><circle id="tc" cx="130" cy="130" r="${R}" stroke="${col(s)}" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
    <div class="t"><div><b id="tt">00:00</b><div class="mut small" id="ts"></div></div></div></div>
    <div class="grid2"><button class="btn ghost" data-act="tpause" id="tp"></button><button class="btn" data-act="tfinish">${ic('check')} Terminar</button></div>
-   <button class="pomo ${T.pomo?'on':''}" data-act="tpomo" id="tpomo" role="switch" aria-checked="${!!T.pomo}"><span><b>Descansos</b><small>${POMO.rest} min cada ${POMO.work} min de estudio</small></span><i></i></button>
+   <button class="pomo ${T.pomo?'on':''}" data-act="tpomo" id="tpomo" role="switch" aria-checked="${!!T.pomo}"><span><b>Descansos</b><small id="pomotx">${POMO.rest} min cada ${POMO.work} min de estudio</small></span><i></i></button>
+   <div class="pomoset">${[['w','Estudio',POMO.work],['r','Descanso',POMO.rest]].map(([k,l,v])=>`<div><span class="mut small">${l}</span>
+     <div class="step"><button class="btn icon ghost" data-act="pomoset" data-k="${k}" data-d="-5" aria-label="Menos ${l.toLowerCase()}">−</button><b id="pomo${k}">${v} min</b><button class="btn icon ghost" data-act="pomoset" data-k="${k}" data-d="5" aria-label="Más ${l.toLowerCase()}">+</button></div></div>`).join('')}</div>
    <button class="link" data-act="tcancel" style="color:var(--mut)">Descartar sesión</button>`);
   const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
   const tick=()=>{if(!S.timer||!$('#tt'))return;pomoTick();const T=S.timer;if(!T)return;
@@ -1729,7 +1737,7 @@ function openTimer(){
     $('#tt').textContent=br!=null?mmss(br):(rem<0?'+':'')+mmss(a);
     $('#ts').textContent=br!=null?'Descanso · estira y bebe agua':rem<0?'¡Tiempo cumplido!':T.paused?'En pausa':T.pomo&&rem>=10*60?`Concéntrate · descanso en ${Math.max(1,Math.ceil(POMO.work-(e/60)%POMO.work))} min`:'Concéntrate';
     const tp=$('#tp'),lb=br!=null?'skip':T.paused?'play':'pause';if(tp.dataset.lb!==lb){tp.dataset.lb=lb;tp.innerHTML=br!=null?ic('right')+' Saltar':T.paused?ic('play')+' Seguir':ic('pause')+' Pausa'}
-    const f=br!=null?1-br/(POMO.rest*60):Math.min(1,e/(T.min*60)),tc=$('#tc'),tw=$('.timer');
+    const f=br!=null?1-br/((T.brkLen||POMO.rest)*60):Math.min(1,e/(T.min*60)),tc=$('#tc'),tw=$('.timer');
     tc.style.strokeDashoffset=C*(1-f);tc.style.opacity=f>.003?1:0;
     tw.classList.toggle('brk',br!=null);tw.classList.toggle('paused',!!T.paused&&br==null);tw.classList.toggle('done',rem<0&&br==null)};
   tick();timerInt=setInterval(tick,500);
@@ -1786,6 +1794,10 @@ const A={
   // Activar o quitar los descansos; los que ya habrían tocado no salen de golpe
   tpomo:()=>{const T=S.timer;T.pomo=S.pomo=!T.pomo;T.brks=Math.floor(elapsed()/60000/POMO.work);if(!T.pomo&&T.brk){T.brk=null;T.paused=false;T.start=Date.now()}
     save();const b=$('#tpomo');b.classList.toggle('on',T.pomo);b.setAttribute('aria-checked',T.pomo);$('#tp').dataset.lb=''},
+  // Cambiar cuánto se estudia antes de cada descanso y cuánto dura (se recuerda para las próximas veces)
+  pomoset:d=>{const k=d.k==='w'?'pomoW':'pomoR',[lo,hi]=POMO_LIM[d.k],T=S.timer;S[k]=Math.max(lo,Math.min(hi,POMO[d.k==='w'?'work':'rest']+ +d.d));
+    if(T&&d.k==='w')T.brks=Math.floor(elapsed()/60000/POMO.work);save();
+    $('#pomo'+d.k).textContent=S[k]+' min';$('#pomotx').textContent=`${POMO.rest} min cada ${POMO.work} min de estudio`},
   tfinish:()=>finishTimer(),
   tcancel:()=>ask('¿Descartar esta sesión? No contará el tiempo.','Descartar',()=>{S.timer=null;save()}),
   subj:d=>openSubj(d.id),
