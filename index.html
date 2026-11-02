@@ -134,7 +134,8 @@ details.how summary::-webkit-details-marker{display:none}
 .sgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .scard{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:14px;min-width:0;text-align:left}
 .letter{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:800;color:#fff;font-size:19px;flex:none}
-.scard .nm{font-size:16px;font-weight:600;line-height:1.25;min-width:0;overflow-wrap:break-word;hyphens:auto}
+.scard .shead{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.scard .nm{font-size:16px;font-weight:600;line-height:1.25;min-width:0;overflow-wrap:break-word;hyphens:manual}
 .scard .num{font-size:34px}
 .scard .st{font-size:13.5px;font-weight:600}
 .bdg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -167,10 +168,9 @@ select.inp{appearance:none;-webkit-appearance:none}
 
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none;align-items:flex-end;justify-content:center}
 .ov.on{display:flex}
-.sheet{background:#1d1d20;border:1px solid var(--line);border-bottom:0;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:26px 26px 0 0;padding-top:10px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));animation:up .22s ease-out}
+.sheet{background:#1d1d20;border:1px solid var(--line);border-bottom:0;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:26px 26px 0 0;padding-top:10px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));animation:up .38s var(--ease)}
 @media (min-width:700px){.ov{align-items:center}.sheet{border-radius:26px;border-bottom:1px solid var(--line)}}
-@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
-@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+@keyframes up{from{transform:translateY(70px);opacity:0}to{transform:none;opacity:1}}
 .grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:4px auto 14px}
 .sheet h2{margin-top:4px}
 .qa{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -181,7 +181,7 @@ select.inp{appearance:none;-webkit-appearance:none}
 .timer svg{max-width:100%}
 .timer .t{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
 .timer .t b{font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:#2b2b30;border:1px solid var(--line);padding:11px 16px;border-radius:14px;font-weight:650;font-size:14.5px;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(24px) scale(.94);background:#2b2b30;border:1px solid var(--line);padding:11px 16px;border-radius:14px;font-weight:650;font-size:14.5px;opacity:0;transition:opacity .22s ease,transform .45s var(--spring);box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%)}
 .empty{color:var(--mut);text-align:center;padding:14px 0;font-size:14.5px}
 /* Racha */
@@ -227,6 +227,78 @@ body.onbm nav.tab{display:none}
 .onb .chips button svg{margin-left:-3px}
 /* Nombres largos de materia: la etiqueta pasa a dos líneas en vez de salirse de la pantalla */
 .chips button{height:auto;min-height:36px;padding-top:6px;padding-bottom:6px;max-width:100%;text-align:left;line-height:1.25}
+/* Retoques visuales */
+.card.tight>.between:first-child{margin-bottom:6px}
+.between:has(>h2){align-items:flex-end}.between:has(>h2)>.circ{margin-bottom:8px}
+.loading{display:grid;place-items:center;height:70vh}.loading svg{width:56px;height:56px;animation:breathe 1.4s ease-in-out infinite}
+
+/* ====== Animaciones ======
+   Entrada escalonada al cambiar de pestaña (#main.enter), hojas que suben y bajan,
+   botones que responden al toque y barras, anillos y gráficas que se dibujan.
+   Lo que se repinta en cada clic solo se anima cuando cambia de verdad (FX en el script). */
+:root{--ease:cubic-bezier(.22,.9,.24,1);--spring:cubic-bezier(.34,1.5,.64,1)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes popsoft{0%{transform:scale(.92)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
+@keyframes slideL{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes breathe{0%,100%{opacity:.45;transform:scale(.94)}50%{opacity:1;transform:scale(1)}}
+@keyframes ovIn{from{background-color:rgba(0,0,0,0)}}
+@keyframes ovOut{to{background-color:rgba(0,0,0,0)}}
+@keyframes down{to{transform:translateY(110%)}}
+@keyframes flick{0%,100%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(3deg) scale(1.07)}}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(47,124,246,.55)}100%{box-shadow:0 0 0 14px rgba(47,124,246,0)}}
+@keyframes blink{50%{opacity:.35}}
+#main.enter>*:not(.onb),#main.enter .onb>*{animation:rise .5s var(--ease) backwards}
+#top.boot{animation:fadein .5s ease backwards}
+/* Botones: respuesta al toque */
+button,.tap{transition:transform .18s var(--ease),background-color .22s ease,border-color .22s ease,color .22s ease,box-shadow .22s ease,opacity .2s ease}
+.btn:active,.circ:active,.navb:active,.chip:active,.chips button:active,.seg button:active,.opt:active,.qa button:active,.wkd:active,.day:active,.check:active,.tb:active,.themes button:active,.ring:active{transform:scale(.94)}
+.fab:active{transform:scale(.9)}
+.tap:active,.scard:active{transform:scale(.98)}
+@media (hover:hover){.btn:hover,.fab:hover{filter:brightness(1.08)}.tap:hover,.scard:hover,.qa button:hover,.opt:hover{border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}}
+/* Barra inferior: la pestaña activa crece con su nombre */
+.tb.on{animation:popsoft .4s var(--spring)}.tb.on .lb{animation:slideL .3s var(--ease) backwards}
+.tb.on svg{animation:pop .45s var(--spring)}
+/* Hojas: entran con el fondo oscureciéndose y salen hacia abajo */
+.ov.on{animation:ovIn .3s ease backwards}
+.ov.closing{animation:ovOut .24s ease forwards;pointer-events:none}.ov.closing .sheet{animation:down .26s cubic-bezier(.4,0,1,1) forwards}
+.sheet{will-change:transform;overscroll-behavior:contain}
+.ov.opening .sheet>*{animation:rise .42s var(--ease) backwards}
+.ov.opening .qa button{animation:rise .42s var(--ease) backwards}
+.ov.opening .qa button:nth-child(2){animation-delay:.04s}.ov.opening .qa button:nth-child(3){animation-delay:.08s}.ov.opening .qa button:nth-child(4){animation-delay:.12s}
+/* Barras, anillos y gráficas que se dibujan al aparecer */
+#main.enter .bar i,.ov.opening .bar i{transform-origin:left;animation:growX .8s var(--ease) backwards .15s}
+#main.enter .wkbar i,.fx-wk .wkbar i{transform-origin:bottom;animation:growY .7s var(--ease) backwards}
+#main.enter .wkd:nth-child(2) .wkbar i{animation-delay:.04s}#main.enter .wkd:nth-child(3) .wkbar i{animation-delay:.08s}#main.enter .wkd:nth-child(4) .wkbar i{animation-delay:.12s}
+#main.enter .wkd:nth-child(5) .wkbar i{animation-delay:.16s}#main.enter .wkd:nth-child(6) .wkbar i{animation-delay:.2s}#main.enter .wkd:nth-child(7) .wkbar i{animation-delay:.24s}
+#main.enter .chart polyline,.ov.opening polyline,.chartw.fx polyline{stroke-dasharray:1;animation:draw 1s var(--ease) backwards .2s}
+#main.enter .chart .pt,.ov.opening .chart .pt,.chartw.fx .pt{animation:fadein .4s ease backwards .55s}
+#main.enter .chart .pt path,.chartw.fx .pt path{transform-box:fill-box;transform-origin:bottom;animation:growY .7s var(--ease) backwards .1s}
+#main.enter .chart .vl,.chartw.fx .vl{animation:fadein .4s ease backwards .8s}
+#main.enter .swk i.on,#main.enter .flame.on{animation:pop .5s var(--spring) backwards .3s}
+.streak.hot svg{animation:flick 2.6s ease-in-out infinite;transform-origin:50% 80%}
+.ring.lvup{animation:glow 1s ease-out 2}
+/* Al marcar algo como hecho, al elegir un día o cambiar de semana */
+.check.fx{animation:pop .45s var(--spring)}
+.day.fx,.wkd.fx{animation:popsoft .35s var(--spring)}
+.grid7.fx-l>*{animation:slideL .32s var(--ease) backwards}.grid7.fx-r>*{animation:slideR .32s var(--ease) backwards}
+.fx-in{animation:rise .35s var(--ease) backwards}
+.seg button.on{box-shadow:0 1px 3px rgba(0,0,0,.25)}
+/* Cuestionario */
+#main.enter .obdots i.now{transform-origin:left;animation:growX .5s var(--ease) backwards .1s}
+.opt.on{animation:popsoft .3s var(--spring)}
+/* Temporizador */
+#tc{transition:stroke-dashoffset .6s linear,opacity .3s}
+.timer.paused .t b{animation:blink 1.6s ease-in-out infinite}
+.timer.done .t b{animation:pop .6s var(--spring);color:var(--ok)}
+/* Cambio de estilo: los colores se funden */
+html.theming *,html.theming *::before{transition:background-color .4s ease,color .4s ease,border-color .4s ease,fill .4s ease,stroke .4s ease!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 <!-- TEMAS: lo genera app/disenos/temas.ps1 a partir de app/disenos/tema-*.css; no editar a mano -->
 <style data-tema="minimal" media="not all">
@@ -726,7 +798,7 @@ const sameData=(a,b)=>JSON.stringify({...a,updatedAt:0,timer:null})===JSON.strin
 const tomb=k=>{S.del[k]=Date.now()};
 // El cuestionario inicial espera a saber si esta persona ya tiene datos en otro dispositivo
 let syncReady=false;
-function setSyncReady(){if(syncReady)return;syncReady=true;render()}
+function setSyncReady(){if(syncReady)return;syncReady=true;if(!S.setup)render()}
 async function initSync(){
   if(!window.claude||typeof window.claude.use!=='function')return setSyncReady();
   try{
@@ -747,7 +819,7 @@ async function initSync(){
         // Si al unir hay algo que el otro dispositivo no tenía, se sube la versión unida
         if(sameData(M,R))S.updatedAt=d.updatedAt;else{S.updatedAt=Math.max(Date.now(),(d.updatedAt||0)+1);push()}
         try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-        if(changed&&!$('#ov').classList.contains('on'))render();maybeAskGrade()}catch(e){}
+        if(changed&&!sheetOpen())render();maybeAskGrade()}catch(e){}
       setSyncReady();
     },()=>{syncState='err';setSyncReady()});
   }catch(e){syncState='local';setSyncReady()}}
@@ -775,7 +847,10 @@ const TH={
     subj:{fis:'#ffc48a',hes:'#7fe7dc',fil:'#c3a6ff',len:'#9df29b',mat:'#ff9f8a',tec:'#e4f58a',ing:'#ff9ee8'}}};
 let themeOn=null;
 function applyTheme(){
-  const id=TH[S.theme]?S.theme:'original';if(id===themeOn)return;themeOn=id;
+  const id=TH[S.theme]?S.theme:'original';if(id===themeOn)return;
+  // Al cambiar de estilo (no al abrir la app) los colores se funden en vez de saltar
+  if(themeOn){const r=document.documentElement;r.classList.add('theming');clearTimeout(applyTheme.t);applyTheme.t=setTimeout(()=>r.classList.remove('theming'),500)}
+  themeOn=id;
   document.querySelectorAll('style[data-tema]').forEach(st=>{st.media=st.dataset.tema===id?'all':'not all'});
   document.documentElement.dataset.theme=id;
   const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=TH[id].bg;
@@ -900,7 +975,7 @@ function obSync(){const n=$('#onbName');if(n)OB.name=n.value.trim();const m=$('#
 const inCurso=id=>!CAT[id].c||CAT[id].c===OB.curso;
 const obCount=()=>OB.picks.size+OB.extra.length;
 function vOnb(){
-  const st=OB.step,N=5,dots=`<div class="obdots">${[...Array(N)].map((_,i)=>`<i class="${i<=st?'on':''}"></i>`).join('')}</div>`;
+  const st=OB.step,N=5,dots=`<div class="obdots">${[...Array(N)].map((_,i)=>`<i class="${i<=st?'on':''} ${i===st?'now':''}"></i>`).join('')}</div>`;
   const nav=(ok,label='Siguiente')=>`<div class="obnav">${st?`<button class="btn ghost" data-act="obGo" data-s="${st-1}">Atrás</button>`:''}
     <button class="btn" data-act="${st===N-1?'obDone':'obGo'}" data-s="${st+1}" ${ok?'':'disabled'}>${label}</button></div>`;
   const chip=(id,on,act,extra='')=>`<button class="${on?'on':''}" data-act="${act}" data-id="${id}" ${extra}>${on?ic('check','s'):''}${h(catName(id,OB.curso))}</button>`;
@@ -992,7 +1067,7 @@ function lineChart(pts,o){
   let s=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${h(o.label)}">`;
   s+=[lo,(lo+hi)/2,hi].map(v=>`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="gl"/><text x="${W-R+6}" y="${Y(v)+4}" class="ax">${fmt(v,1).replace(',0','')}</text>`).join('');
   if(o.target!=null)s+=`<line x1="${L}" x2="${W-R}" y1="${Y(o.target)}" y2="${Y(o.target)}" class="tg"/><text x="${L}" y="${Y(o.target)-5}" class="ax">objetivo ${fmt(o.target,1).replace(',0','')}</text>`;
-  if(n>0)s+=`<polyline points="${pts.map((p,i)=>X(i)+','+Y(p.y)).join(' ')}" fill="none" stroke="${o.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  if(n>0)s+=`<polyline pathLength="1" points="${pts.map((p,i)=>X(i)+','+Y(p.y)).join(' ')}" fill="none" stroke="${o.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   s+=pts.map((p,i)=>`<g class="pt" data-act="cpt" data-tip="${h(p.tip)}"><circle cx="${X(i)}" cy="${Y(p.y)}" r="14" fill="transparent"/><circle cx="${X(i)}" cy="${Y(p.y)}" r="${i===n?5:4}" fill="${o.color}" stroke="var(--card)" stroke-width="2"/><title>${h(p.tip)}</title></g>`).join('');
   s+=`<text x="${X(n)}" y="${Y(pts[n].y)-10}" text-anchor="${n?'end':'middle'}" class="vl">${fmt(pts[n].y,o.dec??1)}</text>`;
   s+=`<text x="${X(0)}" y="${H-5}" class="ax" text-anchor="${n?'start':'middle'}">${pts[0].x}</text>`+(n?`<text x="${X(n)}" y="${H-5}" class="ax" text-anchor="end">${pts[n].x}</text>`:'');
@@ -1190,8 +1265,8 @@ function vPerfil(){
   <h2>Gráficas</h2>${vCharts()}
   <div class="between"><div><h2 style="margin-bottom:2px">Materias</h2><div class="mut" style="margin:0 2px 14px">${SUBJ().length} de ${MAX_SUBJ}</div></div>${SUBJ().length<MAX_SUBJ?`<button class="circ" data-act="addsubj" aria-label="Añadir materia">${ic('plus')}</button>`:''}</div>
   <div class="sgrid">${SUBJ().map(s=>{const a=subjAvg(s.id);let st,cl='warnc';
-      if(a==null)st='Sin notas todavía';else if(s.target==null)st='Sin objetivo';else if(a>=s.target){st='Objetivo cumplido ✓';cl='okc'}else{st=`Te faltan ${fmt(s.target-a,1)} para el ${fmt(s.target,1).replace(',0','')}`;cl='mut'}
-      return `<button class="scard" data-act="subj" data-id="${s.id}"><div class="row" style="align-items:flex-start"><span class="letter" style="background:${col(s)}">${h(s.name[0])}</span><span class="nm">${h(s.name)}</span></div>
+      if(a==null){st='Sin notas todavía';cl='mut'}else if(s.target==null){st='Sin objetivo';cl='mut'}else if(a>=s.target){st='Objetivo cumplido ✓';cl='okc'}else{st=`Te faltan ${fmt(s.target-a,1)} para el ${fmt(s.target,1).replace(',0','')}`;cl='mut'}
+      return `<button class="scard" data-act="subj" data-id="${s.id}"><div class="shead"><span class="letter" style="background:${col(s)}">${h(s.name[0])}</span><span class="nm">${h(s.name)}</span></div>
       <div class="num">${fmtAvg(a)}</div><div class="st ${cl}">${st}</div></button>`}).join('')}</div>
   <div class="card tight tap row" style="margin-top:14px;padding:16px" data-act="bag"><span class="letter" style="background:rgba(47,124,246,.15);color:var(--acc2);width:48px;height:48px;border-radius:14px">${ic('bag')}</span>
     <div style="flex:1;min-width:0"><div style="font-size:18px;font-weight:700">Mochila</div><div class="mut">${S.files.length} ${S.files.length===1?'archivo':'archivos'} · ${S.memos.length} ${S.memos.length===1?'apunte':'apuntes'} rápidos</div></div>${ic('right')}</div>
@@ -1244,7 +1319,7 @@ function openAnalysis(){
   const t=today(),m30=minsBy(addDays(t,-29),t),g=graded().sort((a,b)=>a.date<b.date?-1:1);
   const W=300,H=90,pts=g.map((e,i)=>[g.length>1?10+i*(W-20)/(g.length-1):W/2,H-10-(e.grade-5)/5*(H-20)]);
   const chart=g.length?`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin-top:6px">${[5,7.5,10].map(v=>{const y=H-10-(v-5)/5*(H-20);return `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${W}" y="${y-3}" fill="var(--dim)" font-size="10" text-anchor="end">${fmt(v,1).replace(',0','')}</text>`}).join('')}
-    ${g.length>1?`<polyline points="${pts.map(p=>p.map(v=>Math.max(4,v)).join(',')).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>`:''}${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${Math.max(4,p[1])}" r="${i===pts.length-1?5:3.5}" fill="${col(sb(g[i].subj))}"/>`).join('')}</svg>`:'<div class="mut small">Aún no hay notas.</div>';
+    ${g.length>1?`<polyline pathLength="1" points="${pts.map(p=>p.map(v=>Math.max(4,v)).join(',')).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>`:''}${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${Math.max(4,p[1])}" r="${i===pts.length-1?5:3.5}" fill="${col(sb(g[i].subj))}"/>`).join('')}</svg>`:'<div class="mut small">Aún no hay notas.</div>';
   const rows=SUBJ().map(s=>{const gs=subjGrades(s.id),a=subjAvg(s.id),tr=gs.length>1?gs[gs.length-1].grade-gs[gs.length-2].grade:null;
     return `<div class="item"><span class="letter" style="background:${col(s)};width:32px;height:32px;font-size:14px">${h(s.name[0])}</span><div style="flex:1;min-width:0"><div class="ell" style="font-weight:650">${h(s.name)}</div><div class="mut small">${fmtMin(m30[s.id]||0)} en 30 días${s.target!=null?' · objetivo '+fmt(s.target,1):''}</div></div>
     <div style="text-align:right"><b>${fmtAvg(a)}</b>${tr!=null?`<div class="small ${tr>=0?'okc':'warnc'}">${tr>=0?'▲':'▼'} ${fmt(Math.abs(tr),1)}</div>`:''}</div></div>`}).join('');
@@ -1343,8 +1418,23 @@ function renderPau(){
 
 /* ====== Hojas ====== */
 let onYes=null;
-function sheet(html){if(timerInt){clearInterval(timerInt);timerInt=null}$('#sh').innerHTML='<div class="grab"></div>'+html;$('#ov').classList.add('on');$('#sh').scrollTop=0}
-function closeSheet(){$('#ov').classList.remove('on');$('#sh').innerHTML='';if(timerInt){clearInterval(timerInt);timerInt=null}}
+// Las hojas suben con su contenido escalonado y al cerrarse bajan; si se abre otra mientras baja, se cancela
+let closeT=null,openT=null;
+const sheetOpen=()=>$('#ov').classList.contains('on')&&!$('#ov').classList.contains('closing');
+function sheet(html){if(timerInt){clearInterval(timerInt);timerInt=null}
+  const ov=$('#ov'),sh=$('#sh'),fresh=!sheetOpen();clearTimeout(closeT);ov.classList.remove('closing');sh.style.transform='';sh.style.transition='';
+  sh.innerHTML='<div class="grab"></div>'+html;ov.classList.add('on');sh.scrollTop=0;
+  if(fresh){ov.classList.add('opening');[...sh.children].forEach((c,i)=>{c.style.animationDelay=Math.min(i,10)*28+'ms'});
+    clearTimeout(openT);openT=setTimeout(()=>ov.classList.remove('opening'),800)}else ov.classList.remove('opening')}
+function closeSheet(){if(timerInt){clearInterval(timerInt);timerInt=null}
+  const ov=$('#ov'),sh=$('#sh');if(!sheetOpen())return;ov.classList.remove('opening');ov.classList.add('closing');
+  clearTimeout(closeT);closeT=setTimeout(()=>{ov.classList.remove('on','closing');sh.innerHTML='';sh.style.transform='';sh.style.transition=''},250)}
+// Deslizar la hoja hacia abajo para cerrarla (no con el temporizador en marcha)
+(()=>{const sh=$('#sh');let d=null;
+  sh.addEventListener('touchstart',e=>{if(sh.scrollTop>0||(S.timer&&$('#tt'))||e.target.closest('input,textarea,select'))return;d={y:e.touches[0].clientY,dy:0,t:Date.now()}},{passive:true});
+  sh.addEventListener('touchmove',e=>{if(!d)return;d.dy=Math.max(0,e.touches[0].clientY-d.y);if(d.dy>4){sh.style.transition='none';sh.style.transform=`translateY(${d.dy}px)`}},{passive:true});
+  sh.addEventListener('touchend',()=>{if(!d)return;const fast=d.dy>40&&Date.now()-d.t<250,dy=d.dy;d=null;
+    if(dy>120||fast){closeSheet();onYes=null}else{sh.style.transition='transform .3s var(--spring)';sh.style.transform=''}});})();
 function ask(msg,yes,fn){onYes=fn;sheet(`<h2>${h(msg)}</h2><div style="display:grid;gap:10px"><button class="btn danger" data-act="yes">${h(yes)}</button><button class="btn ghost" data-act="close">Cancelar</button></div>`)}
 function subjChips(sel){return `<div class="chips" id="sc">${SUBJ().map(s=>`<button class="${s.id===sel?'on':''}" data-act="pick" data-s="${s.id}"><span class="dot" style="background:${col(s)}"></span>${h(s.name)}</button>`).join('')}</div>`}
 const picked=()=>$('#sc .on')?.dataset.s;
@@ -1413,7 +1503,7 @@ function updXP(){const g=num($('#gv')?.value),n=+$('#effs .on').dataset.n;$('#xp
 // Una vez al día, al abrir la app, pregunta la nota del examen más antiguo que la tenga pendiente
 function maybeAskGrade(){
   if(!S.setup)return;
-  if(S.timer||$('#ov').classList.contains('on')||S.askedOn===today())return;
+  if(S.timer||sheetOpen()||S.askedOn===today())return;
   const e=pendingGrades().find(e=>!(e.snooze&&e.snooze>today()));if(!e)return;
   S.askedOn=today();save();openGrade(e.id,null,true)}
 function openGradesList(){
@@ -1447,7 +1537,9 @@ function openTimer(){
   const tick=()=>{if(!S.timer||!$('#tt'))return;const e=elapsed()/1000,rem=S.timer.min*60-e,a=Math.abs(rem);
     $('#tt').textContent=(rem<0?'+':'')+String(Math.floor(a/60)).padStart(2,'0')+':'+String(Math.floor(a%60)).padStart(2,'0');
     $('#ts').textContent=rem<0?'¡Tiempo cumplido!':S.timer.paused?'En pausa':'Concéntrate';
-    $('#tc').setAttribute('stroke-dashoffset',C*(1-Math.min(1,e/(S.timer.min*60))))};
+    const f=Math.min(1,e/(S.timer.min*60)),tc=$('#tc'),tw=$('.timer');
+    tc.style.strokeDashoffset=C*(1-f);tc.style.opacity=f>.003?1:0;
+    tw.classList.toggle('paused',!!S.timer.paused);tw.classList.toggle('done',rem<0)};
   tick();timerInt=setInterval(tick,500);
   try{navigator.wakeLock?.request('screen').then(w=>{wake=w}).catch(()=>{})}catch(e){}}
 function markDone(day,key){const arr=S.planDone[day]=S.planDone[day]||[];if(!arr.includes(key))arr.push(key);
@@ -1462,12 +1554,13 @@ function finishTimer(){
 const A={
   tab:d=>{tab=d.t;try{localStorage.setItem(KEY+'.tab',tab)}catch(e){}closeSheet();render();scrollTo(0,0)},
   quick:()=>openQuick(),close:()=>{closeSheet();onYes=null},yes:()=>{const f=onYes;onYes=null;closeSheet();f&&f()},
-  calmode:d=>{cal.mode=d.m;render()},
-  calmv:d=>{const n=+d.d;if(cal.mode==='week')cal.ref=addDays(cal.ref,7*n);else{const r=parse(cal.ref);cal.ref=iso(new Date(r.getFullYear(),r.getMonth()+n,1))}render()},
-  calsel:d=>{cal.sel=d.d;render()},
+  calmode:d=>{if(cal.mode===d.m)return;cal.mode=d.m;FX.calMode=1;render()},
+  calmv:d=>{const n=+d.d;if(cal.mode==='week')cal.ref=addDays(cal.ref,7*n);else{const r=parse(cal.ref);cal.ref=iso(new Date(r.getFullYear(),r.getMonth()+n,1))}FX.cal=n>0?'l':'r';render()},
+  calsel:d=>{if(cal.sel===d.d)return;cal.sel=d.d;FX.day=1;render()},
   start:d=>{const b=planFor(today()).blocks.find(x=>x.key===d.k);if(b)startTimer(b)},
   tick:d=>{const arr=S.planDone[d.d]=S.planDone[d.d]||[],i=arr.indexOf(d.k);
     if(i>=0){arr.splice(i,1);save();render();return}
+    FX.tick=d.k;
     const b=planFor(d.d).blocks.find(x=>x.key===d.k);markDone(d.d,d.k);
     if(b&&d.d<=today()){S.log.push({id:uid(),date:today(),subj:b.subj,min:b.min,eventId:b.eventId,key:b.key});addXP(b.min+15,'bloque completado')}else save();render()},
   grades:()=>openGradesList(),grade:d=>openGrade(d.id),newgrade:d=>openGrade(null,d.s),
@@ -1502,7 +1595,7 @@ const A={
   tcancel:()=>ask('¿Descartar esta sesión? No contará el tiempo.','Descartar',()=>{S.timer=null;save()}),
   subj:d=>openSubj(d.id),
   tpa:d=>{const v=$('#tpin').value.trim();if(!v)return;(S.topics[d.s]=S.topics[d.s]||[]).push({id:uid(),t:v,done:false});save();openSubj(d.s);render();setTimeout(()=>$('#tpin')?.focus(),30)},
-  tpt:d=>{const x=S.topics[d.s].find(x=>x.id===d.id);x.done=!x.done;x.u=Date.now();save();if(x.done)addXP(10,'tema dominado');openSubj(d.s);render()},
+  tpt:d=>{const x=S.topics[d.s].find(x=>x.id===d.id);x.done=!x.done;if(x.done)FX.tick=d.id;x.u=Date.now();save();if(x.done)addXP(10,'tema dominado');openSubj(d.s);render()},
   tpd:d=>{tomb('tp:'+d.id);S.topics[d.s]=S.topics[d.s].filter(x=>x.id!==d.id);save();openSubj(d.s);render()},
   av:d=>{const w=+d.w;S.avail[w]=Math.max(0,Math.min(360,S.avail[w]+ +d.d));save();render();if(d.sh)openAvail()},
   avcopy:()=>{for(const w of [2,3,4,5])S.avail[w]=S.avail[1];save();render();openAvail();toast('Copiado de martes a viernes')},
@@ -1510,8 +1603,8 @@ const A={
   exc:d=>{const w=parse(d.day).getDay(),v=Math.max(0,Math.min(480,availOn(d.day)+ +d.d));if(v===S.avail[w])delete S.exc[d.day];else S.exc[d.day]=v;save();render()},
   excoff:d=>{S.exc[d.day]=0;save();render();toast('Día libre: lo que tocaba se reparte en los demás días')},
   excdel:d=>{delete S.exc[d.day];save();render();if(d.sh)openAvail()},
-  psel:d=>{planSel=d.d;render()},
-  chm:d=>{chartMode=d.m;render()},chs:d=>{chartSubj=d.s;render()},
+  psel:d=>{if(planSel===d.d)return;planSel=d.d;FX.psel=1;render()},
+  chm:d=>{if(chartMode===d.m)return;chartMode=d.m;FX.chart=1;render()},chs:d=>{if(chartSubj===d.s)return;chartSubj=d.s;FX.chart=1;render()},
   cpt:(d,el)=>{const w=el.closest('.chartw');w.querySelector('.ctip').textContent=d.tip;w.querySelectorAll('.pt').forEach(g=>g.classList.toggle('sel',g===el))},
   schedday:d=>{schedSel=+d.w;openSchedView()},schedview:()=>openSchedView(),
   schedit:()=>{schedEd=schedSel||1;openSched()},
@@ -1574,18 +1667,43 @@ $('#upf').addEventListener('change',async ev=>{
 let toastT;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600)}
 
+/* ====== Pintar ======
+   La vista entra animada solo cuando cambia (otra pestaña o paso del cuestionario); en el resto de
+   repintados aparece tal cual. FX lleva los efectos de un solo uso que pide la última acción. */
+let lastView=null,lastTop=null,lastRing=null,lastLvl=null,FX={};
+function setMain(html,view){const m=$('#main'),enter=view!==lastView;lastView=view;m.innerHTML=html;m.classList.toggle('enter',enter);
+  if(enter){const kids=m.firstElementChild&&m.firstElementChild.classList.contains('onb')?m.firstElementChild.children:m.children;
+    [...kids].forEach((c,i)=>{c.style.animationDelay=Math.min(i,9)*55+'ms'});
+    // Por si un dispositivo no llega a ejecutar la animación: el contenido nunca se queda oculto
+    clearTimeout(setMain.t);setMain.t=setTimeout(()=>m.classList.remove('enter'),1700)}}
+function setTop(html){const t=$('#top');if(html===lastTop)return;if(lastTop==null)t.classList.add('boot');lastTop=html;t.innerHTML=html;
+  // El anillo de nivel se llena desde donde estaba; al subir de nivel, desde cero y con un destello
+  const rc=t.querySelector('.ring circle:last-of-type');if(!rc)return;
+  const C=+rc.getAttribute('stroke-dasharray'),to=+rc.getAttribute('stroke-dashoffset'),lv=lvl().n,up=lastLvl!=null&&lv>lastLvl;
+  const from=up||lastRing==null?C:lastRing;lastRing=to;lastLvl=lv;if(up)t.querySelector('.ring').classList.add('lvup');
+  if(from===to)return;rc.style.strokeDashoffset=from;rc.getBoundingClientRect();
+  rc.style.transition='stroke-dashoffset 1.1s var(--ease) .15s';rc.style.strokeDashoffset=to}
+function applyFX(){const q=s=>document.querySelector(s),k=v=>CSS.escape(v);
+  if(FX.cal)q('#main .grid7')?.classList.add('fx-'+FX.cal);
+  if(FX.calMode)q('#main .grid7')?.classList.add('fx-in');
+  if(FX.day){q('#main .day.sel')?.classList.add('fx');q('#main .grid7+div')?.classList.add('fx-in')}
+  if(FX.chart)q('#main .chartw')?.classList.add('fx');
+  if(FX.psel){q('#main .wkd.on')?.classList.add('fx');q('#main .freebar')?.closest('.card')?.classList.add('fx-in')}
+  if(FX.tick)q(`[data-act="tick"][data-k="${k(FX.tick)}"],[data-act="tpt"][data-id="${k(FX.tick)}"]`)?.classList.add('fx');
+  FX={}}
 function render(){
   applyTheme();
   document.body.classList.toggle('onbm',!S.setup);
-  if(!S.setup){obSync();$('#top').innerHTML='';
-    $('#main').innerHTML=syncReady?vOnb():`<div class="empty" style="padding-top:40vh">Cargando…</div>`;return}
-  $('#top').innerHTML=vTop();
-  $('#main').innerHTML=tab==='clase'?vClase():tab==='plan'?vPlan():tab==='perfil'?vPerfil():vInicio();
+  if(!S.setup){obSync();setTop('');
+    setMain(syncReady?vOnb():`<div class="loading" aria-label="Cargando"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="var(--logo-bg)"/><path d="M20 45 32 14 44 45 32 37.5Z" fill="var(--logo-fg)"/><path d="M32 14 44 45 32 37.5Z" fill="var(--logo-fg2)"/></svg></div>`,syncReady?'onb'+OB.step:'load');return}
+  setTop(vTop());
+  setMain(tab==='clase'?vClase():tab==='plan'?vPlan():tab==='perfil'?vPerfil():vInicio(),tab);
+  applyFX();
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===tab))}
 render();
 if(S.timer)openTimer();
 setTimeout(maybeAskGrade,1500);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!$('#ov').classList.contains('on')){render();maybeAskGrade()}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheetOpen()){render();maybeAskGrade()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='onbExtra')A.obAdd()});
 initSync();
 // Si la sincronización no contesta, el cuestionario sale igualmente
