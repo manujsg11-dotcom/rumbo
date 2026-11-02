@@ -783,7 +783,7 @@ nav.tab{background:rgba(22,18,40,.42);border-top:1px solid rgba(255,255,255,.12)
 
 <nav class="tab"><div class="in">
   <button class="tb" data-act="tab" data-t="inicio" aria-label="Inicio"><svg class="i"><use href="#i-home"/></svg><span class="lb">Inicio</span></button>
-  <button class="tb" data-act="tab" data-t="clase" aria-label="Clase"><svg class="i"><use href="#i-book"/></svg><span class="lb">Clase</span></button>
+  <button class="tb" data-act="tab" data-t="clase" aria-label="Estudio"><svg class="i"><use href="#i-book"/></svg><span class="lb">Estudio</span></button>
   <button class="tb" data-act="tab" data-t="plan" aria-label="Plan"><svg class="i"><use href="#i-map"/></svg><span class="lb">Plan</span></button>
   <button class="tb" data-act="tab" data-t="perfil" aria-label="Perfil"><svg class="i"><use href="#i-user"/></svg><span class="lb">Perfil</span></button>
   <button class="fab" data-act="quick" aria-label="Acciones rápidas"><svg class="i"><use href="#i-plus"/></svg></button>
@@ -1286,7 +1286,7 @@ function vGuide(){
 // También se abre desde Ajustes. Se lleva fuera de #main para que los repintados no la toquen.
 const TOUR=[
   {q:'.tb[data-t="inicio"]',t:'Inicio',d:'Lo que te toca hoy, tu racha y el calendario con tus exámenes y tareas.'},
-  {q:'.tb[data-t="clase"]',t:'Clase',d:'Para ponerte a estudiar cuando quieras, con temporizador y objetivos, y ver tus materias una a una.'},
+  {q:'.tb[data-t="clase"]',t:'Estudio',d:'Para ponerte a estudiar cuando quieras, con temporizador y objetivos, y ver tus materias una a una.'},
   {q:'.tb[data-t="plan"]',t:'Plan',d:'Qué estudiar cada día, numerado de más a menos importante. Aquí también cambias tu tiempo libre.'},
   {q:'.tb[data-t="perfil"]',t:'Perfil',d:'Tus medias, las gráficas, la calculadora de la PAU y los ajustes.'},
   {q:'.fab',t:'El botón +',d:'Para añadir exámenes, tareas o notas, o ponerte a estudiar con el temporizador.'},
@@ -1944,7 +1944,7 @@ const A={
     const n=+$('#effs .on').dataset.n;let e;
     if(d.id)e=evById(d.id);else{e={id:uid(),kind:'examen',subj:picked(),title:$('#evt').value.trim()||'Examen',date:$('#evd').value||today(),temas:1,level:'normal'};S.events.push(e)}
     e.grade=g;e.effort=n;e.u=Date.now();save();closeSheet();addXP(gradeXP(g,n),`${fmt(g,1)} en ${sb(e.subj).name}`);render()},
-  // «Estudiar ahora» lleva a la pestaña Clase, donde está la sesión
+  // «Estudiar ahora» lleva a la pestaña Estudio (id interno 'clase'), donde está la sesión
   free:()=>A.tab({t:'clase'}),
   sesSubj:d=>{if(SES.subj===d.s)return;SES.subj=d.s;render()},
   sesAddGoal:()=>{const v=$('#sesGoal').value.trim();if(!v)return;if(SES.goals.length>=8){toast('Como mucho 8 objetivos por sesión');return}
