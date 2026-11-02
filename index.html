@@ -708,6 +708,69 @@ nav.tab{background:rgba(255,250,251,.92);border-top:1px solid var(--line)}
 .chart .gl{stroke:#f1d3db}.chart .vl{fill:var(--tx)}
 .range::-webkit-slider-thumb{box-shadow:0 2px 8px rgba(176,74,110,.35)}
 </style>
+<style data-tema="verde" media="not all">
+.chip{white-space:nowrap}
+/* VERDE PASTEL: hermano del Pastel y del Rosa pastel en verde salvia; tarjetas casi blancas, botones verde hoja,
+   letra redondeada (Quicksand) y manchas suaves de menta en el fondo */
+:root{color-scheme:light;--bg:#edf4ec;--card:#fbfdfa;--card2:#e0ede0;--line:#d3e4d3;--tx:#28392d;--mut:#536b58;--dim:#8fa894;--acc:#3d7a56;--acc2:#336a4a;--ok:#4f8f62;--warn:#c98a3d;--bad:#c25b4e;--r:26px;
+  --track:#dfebdf;--bar2:#a9cdb2;--free:#d3e4d3;--logo-bg:#3d7a56;--logo-fg:#f6fbf5;--logo-fg2:#b9dcc3;
+  --ui:"Quicksand",-apple-system,BlinkMacSystemFont,sans-serif;--num:"Quicksand",var(--ui)}
+html,body{background:#edf4ec}
+body{font-size:15px;font-weight:500}
+/* Fondo: menta muy suave arriba a la izquierda y verde limón abajo a la derecha */
+.deco{display:block;position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(60vmax 45vmax at 0% 0%,rgba(186,228,198,.6),transparent 70%),radial-gradient(55vmax 45vmax at 100% 100%,rgba(222,236,184,.5),transparent 70%),radial-gradient(40vmax 30vmax at 100% 20%,rgba(190,228,224,.35),transparent 70%)}
+.wrap{position:relative;z-index:1}
+.chip{background:var(--card);border-color:var(--line);font-weight:700;color:var(--acc)}
+.ring span{color:var(--acc);font-weight:700}
+.streak{color:var(--mut)}.streak.hot{color:#a5622a}
+.warnc{color:#8f5f24}
+.card{border:0;box-shadow:0 2px 16px rgba(61,122,86,.08)}
+h2{font-weight:700;font-size:20px;color:var(--tx)}
+.eyebrow{color:var(--acc2);font-weight:700;letter-spacing:.07em}
+.big{font-weight:700;font-size:24px;color:var(--tx)}
+.num{font-weight:700;letter-spacing:-.02em}
+.course .num.xl{font-size:62px}.course .num.lg{font-size:38px}.trio .num{font-size:30px}.scard .num{font-size:28px}
+.btn{background:var(--acc);color:#f6fbf5;border-radius:999px;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(61,122,86,.22)}
+.btn.ghost{background:var(--card2);color:var(--tx);box-shadow:none}
+.btn.danger{background:#f6dcd6;color:#a2473c;box-shadow:none}
+.btn.sm{border-radius:999px}.btn.icon{border-radius:50%}
+.btn:disabled{box-shadow:none}
+.link{color:var(--acc);font-weight:700}
+.circ{border-color:var(--line);color:var(--acc);background:var(--card)}
+.navb{color:var(--acc2)}
+nav.tab{background:rgba(251,253,250,.92);border-top:1px solid var(--line)}
+.tb{color:#71897a}.tb.on{background:var(--card2);border-color:transparent;color:var(--tx)}.tb.on svg{color:var(--acc)}
+.fab{background:var(--acc);color:#f6fbf5;box-shadow:0 6px 18px rgba(61,122,86,.32)}
+.pill{background:var(--card2);color:var(--acc2)}
+.pill.hot{background:#f6dcd6;color:#a2473c}.pill.warm{background:#f3e7c9;color:#8a5e22}.pill.blue{background:#d9ebdf;color:var(--acc)}
+.warnbox{background:#f6eedb;border-color:#e8d6ae;color:#7f5720}
+.seg{background:var(--card2);border:0;border-radius:999px}
+.seg button{border-radius:999px;color:var(--mut)}.seg button.on{background:var(--acc);color:#f6fbf5}
+.day{border-radius:16px}.day.today{border-color:var(--acc);color:var(--acc)}.day.sel{background:var(--card2)}
+.inp{background:#fff;border-color:var(--line);border-radius:16px}
+.wkd{background:var(--card2);border-radius:18px}.wkd .mut{color:#46604c}.wkd.on{background:#c9e2cf;border-color:var(--acc)}
+.wkbar{background:#f6fbf5}.wkbar .pl{background:var(--acc)}
+.freebar{background:var(--card2);border-radius:18px}
+.stat,.res{background:var(--card2)}
+.note{background:var(--card2);border:0;color:var(--acc2)}
+.est{background:#e3f0e4;border-color:#c8dfcc}.est b{color:var(--acc)}
+.swk i{background:var(--card2)}.swk i.on{background:#c9e2cf;color:var(--acc)}.swk i.td{box-shadow:0 0 0 2px var(--acc)}.swk i.fut{border-color:var(--line)}
+.flame{background:var(--card2);color:var(--mut)}.flame.on{background:#f6e3cf;color:#a5622a}
+.check{border-color:var(--dim)}.check.on{background:var(--acc);border-color:var(--acc)}
+.chips button{border-color:var(--line);color:var(--mut);background:var(--card)}.chips button.on{background:#dcecdf;border-color:var(--acc);color:var(--tx)}
+.letter{border-radius:14px;color:#22332a!important}
+.scard{background:var(--card);border:0;box-shadow:0 2px 16px rgba(61,122,86,.08);border-radius:24px}
+.avatar{background:var(--card2);border:0;color:var(--acc)}
+.bdg div{background:var(--card2)}
+.qa button{background:var(--card);border:1px solid var(--line);border-radius:22px}
+.sheet{background:#fbfdfa;border:0;border-radius:30px 30px 0 0}
+.ov{background:rgba(30,60,40,.32)}
+.grab{background:var(--dim)}
+.toast{background:var(--acc);color:#f6fbf5;border:0;border-radius:999px}
+.chart .gl{stroke:#d3e4d3}.chart .vl{fill:var(--tx)}
+.range::-webkit-slider-thumb{box-shadow:0 2px 8px rgba(61,122,86,.35)}
+</style>
 <style data-tema="cristal" media="not all">
 .chip{white-space:nowrap}
 /* CRISTAL: paneles de cristal esmerilado sobre un fondo de manchas de color difuminadas (estilo glassmorphism) */
@@ -1002,6 +1065,8 @@ const TH={
     subj:{fis:'#c9a27e',hes:'#8fb8b0',fil:'#b7a3d1',len:'#9cbf8f',mat:'#d4a78a',tec:'#b9c48a',ing:'#d7a1c4'}},
   rosa:{n:'Rosa pastel',bg:'#fbeef1',sw:['#fbeef1','#fffafb','#b04a6e'],pau:['🌸 ',' d'],f:'Nunito:wght@400;600;700;800',
     subj:{fis:'#eaa07e',hes:'#82bbb3',fil:'#b8a1de',len:'#93c49b',mat:'#ef8fa8',tec:'#c8cb80',ing:'#d99ad2'}},
+  verde:{n:'Verde pastel',bg:'#edf4ec',sw:['#edf4ec','#fbfdfa','#3d7a56'],pau:['🌿 ',' d'],f:'Quicksand:wght@400;500;600;700',
+    subj:{fis:'#e3a77c',hes:'#7fb9b4',fil:'#b3a6dc',len:'#86c293',mat:'#e6a08f',tec:'#c3c97a',ing:'#d6a0c9'}},
   cristal:{n:'Cristal',bg:'#0e0c1d',sw:['linear-gradient(135deg,#5a3fe0,#e0408f)','rgba(255,255,255,.3)','#fff'],pau:['✦ ',' d'],f:'Inter:wght@300;400;500;600;700',
     subj:{fis:'#ffc48a',hes:'#7fe7dc',fil:'#c3a6ff',len:'#9df29b',mat:'#ff9f8a',tec:'#e4f58a',ing:'#ff9ee8'}}};
 let themeOn=null;
