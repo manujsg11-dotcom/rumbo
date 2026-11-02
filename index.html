@@ -346,6 +346,22 @@ body.touring{overflow:hidden}
 .tbub p{margin:0;color:var(--mut);font-size:14.5px;line-height:1.45}
 .tnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
 .tnav .link{margin:0;color:var(--mut);font-weight:600;font-size:14.5px}
+/* Medias por trimestre (ficha de materia) y nota que necesitas */
+.trims{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.trims div{background:var(--card2);border-radius:14px;padding:10px 12px}
+.trims b{display:block;font-size:19px;font-weight:800;margin-top:2px}
+.trims .off b{color:var(--dim)}
+.need{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13.5px;line-height:1.4;color:var(--mut)}
+.need svg{color:var(--acc2);margin-top:1px}.need b{color:var(--tx)}
+#main.enter .need{animation:fadein .5s ease backwards .35s}
+/* Temporizador: interruptor de descansos y aspecto durante el descanso */
+.pomo{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin-top:12px;padding:10px 14px;border-radius:14px;border:1px solid var(--line);background:none;text-align:left;cursor:pointer;color:var(--tx);font:inherit}
+.pomo b{display:block;font-size:15px}.pomo small{display:block;color:var(--mut);font-size:12.5px;margin-top:1px}
+.pomo i{flex:none;width:44px;height:26px;border-radius:26px;background:var(--card2);border:1px solid var(--line);position:relative;transition:background-color .25s ease,border-color .25s ease}
+.pomo i::before{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--mut);transition:transform .3s var(--spring),background-color .25s ease}
+.pomo.on i{background:var(--acc);border-color:var(--acc)}.pomo.on i::before{transform:translateX(18px);background:#fff}
+.timer.brk #tc{stroke:var(--ok)}
+.timer.brk .t b{color:var(--ok);animation:breathe 4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 <!-- TEMAS: lo genera app/disenos/temas.ps1 a partir de app/disenos/tema-*.css; no editar a mano -->
@@ -810,6 +826,8 @@ function defaults(){return{
   pau:{histChoice:'hes',len:'',hist:'',ing:'',mat:'',troncal:'mat',esp:{},w:{},target:''},
   // Ayudas para empezar: tour = guía de la app ofrecida, steps = tarjeta de primeros pasos (1 = ya no sale)
   intro:{tour:0,steps:0},
+  // Día en que empiezan el 2º y el 3º trimestre (vacío = enero y abril); pomo = descansos en el temporizador
+  trimStart:{t2:null,t3:null},pomo:false,
   topics:{},notes:{},memos:[],files:[],timer:null,xpLog:[],del:{},resetAt:0,updatedAt:0}}
 // Datos guardados antes de existir el cuestionario: ya están configurados.
 // Quien ya usaba la app antes de las ayudas no las ve (puede abrir la guía desde Ajustes).
@@ -934,7 +952,34 @@ const BADGES=[
 /* ====== Cálculos ====== */
 const evById=id=>S.events.find(e=>e.id===id);
 function subjGrades(id){return graded().filter(e=>e.subj===id).sort((a,b)=>a.date<b.date?-1:1)}
-function subjAvg(id){const g=subjGrades(id).map(e=>e.grade);return g.length?sum(g)/g.length:null}
+// Trimestre de una fecha: 1 (sep–dic), 2 (ene–mar) o 3 (abr–ago), salvo que en Ajustes se hayan puesto
+// los días en que empiezan el 2º y el 3º (solo cuentan para el curso de esas fechas)
+function trimOf(d){const T=S.trimStart||{},m=+d.slice(5,7);let t=m>=9?1:m<=3?2:3;
+  // Las fechas de Ajustes solo mueven la frontera cerca de donde están
+  if(T.t2&&Math.abs(diff(d,T.t2))<75&&t<=2)t=d>=T.t2?2:1;
+  if(T.t3&&Math.abs(diff(d,T.t3))<75&&t>=2)t=d>=T.t3?3:2;
+  return t}
+// Cuánto vale cada examen dentro de su trimestre: lo que haya puesto (e.w, en %) o, si no, se reparte a
+// partes iguales lo que quede hasta el 100 % entre los demás de ese trimestre
+function trimWeights(es){const set=es.filter(e=>e.w!=null),free=es.length-set.length,wa=free?Math.max(0,100-sum(set.map(e=>e.w)))/free:0;
+  return es.map(e=>e.w!=null?e.w:wa)}
+// Media de cada trimestre de una materia; extra = exámenes hipotéticos (para calcular la nota que hace falta)
+function trimAvgs(id,extra=[]){const by={};
+  for(const e of subjGrades(id).filter(e=>!extra.some(x=>x.id===e.id)).concat(extra))(by[trimOf(e.date)]=by[trimOf(e.date)]||[]).push(e);
+  const r={};for(const t in by){const es=by[t],ws=trimWeights(es),W=sum(ws);r[t]=W>0?sum(es.map((e,i)=>e.grade*ws[i]))/W:sum(es.map(e=>e.grade))/es.length}
+  return r}
+// Media de la materia = media de sus trimestres con nota
+function subjAvg(id,extra){const v=Object.values(trimAvgs(id,extra));return v.length?sum(v)/v.length:null}
+// Lo que vale un examen (con nota o no) en su trimestre, y si es automático
+function weightOf(e){const es=subjGrades(e.subj).filter(x=>x.id!==e.id&&trimOf(x.date)===trimOf(e.date)).concat([e]);return{w:trimWeights(es)[es.length-1],auto:e.w==null}}
+// Nota que hace falta en un examen para que la media de la materia llegue a su objetivo
+function needGrade(e){const s=sb(e.subj);if(!s||s.target==null)return null;
+  const f=x=>subjAvg(e.subj,[{...e,grade:x}]),a=f(0),b=f(10);if(b-a<1e-9)return null;
+  return (s.target-a)/(b-a)*10}
+function needTxt(e){const x=needGrade(e);if(x==null)return '';const tg=fmt(sb(e.subj).target,1).replace(',0','');
+  if(x<=0)return `Con cualquier nota mantienes tu ${tg} de media`;
+  if(x>10)return `Ni con un 10 llegas a tu ${tg} con este examen: necesitarás subir en los siguientes`;
+  return `Para llegar a tu ${tg} necesitas un <b>${fmt(Math.ceil(x*10-1e-6)/10,1).replace(',0','')}</b>`}
 function media2Auto(){const a=SUBJ().map(s=>subjAvg(s.id)).filter(v=>v!=null);return a.length?sum(a)/a.length:null}
 const media2=()=>S.media2Manual!=null?S.media2Manual:media2Auto();
 function minsBy(from,to){const m={};for(const l of S.log)if(l.date>=from&&l.date<=to)m[l.subj]=(m[l.subj]||0)+l.min;return m}
@@ -1287,19 +1332,22 @@ function vClase(){
      <div style="flex:1;min-width:0"><div class="ell" style="font-weight:700;font-size:16.5px">${h(s.name)}</div><div class="mut small">${a!=null?`Media ${fmtAvg(a)} · ${n} ${n===1?'nota':'notas'}`:'Sin notas aún'} · ${fmtMin(m[s.id]||0)} esta semana</div></div>
      ${nx?`<span class="pill ${diff(t,nx.date)<=3?'hot':'blue'}">${inDays(diff(t,nx.date))}</span>`:''}</div>
      ${prep_}
+     ${(()=>{const ne=upcoming().find(e=>e.subj===s.id&&e.kind==='examen'),tx=ne?needTxt(ne):'';return tx?`<div class="need">${ic('star','s')}<span>${tx}${ne!==nx?` (examen del ${dShort(ne.date)})`:''}</span></div>`:''})()}
      ${tp.length?`<div class="row" style="margin-top:12px"><div class="bar" style="flex:1"><i style="width:${td/tp.length*100}%;background:${col(s)}"></i></div><span class="mut small">${td}/${tp.length} temas</span></div>`:''}</div>`}
   return o}
 
 function openSubj(id){
-  const s=sb(id),g=subjGrades(id),a=subjAvg(id),tp=S.topics[id]||[],up=upcoming().filter(e=>e.subj===id),t=today();
+  const s=sb(id),g=subjGrades(id),a=subjAvg(id),ta=trimAvgs(id),tp=S.topics[id]||[],up=upcoming().filter(e=>e.subj===id),t=today();
   const wk=minsBy(addDays(t,-6),t)[id]||0;
   sheet(`<div class="between"><h2 style="margin:0" class="row"><span class="letter" style="background:${col(s)}">${h(s.name[0])}</span>${h(s.name)}</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <div class="grid2" style="margin-top:16px"><div class="stat"><span class="mut small">Media</span><b>${fmtAvg(a)}</b></div><div class="stat"><span class="mut small">Estudio (7 días)</span><b>${fmtMin(wk)}</b></div></div>
+   ${g.length?`<div class="trims">${[1,2,3].map(n=>`<div class="${ta[n]!=null?'':'off'}"><span class="mut small">${n}º trimestre</span><b>${fmtAvg(ta[n]??null)}</b></div>`).join('')}</div>`:''}
    <div class="calcrow" style="margin-top:8px"><span>Objetivo de nota</span><input class="inp n" id="tgt" inputmode="decimal" value="${s.target!=null?fmt(s.target,1):''}" placeholder="p. ej. 9"></div>
    ${g.length?`<h3>Evolución</h3>${lineChart(gradePts(id),{color:col(s),target:s.target,label:'Notas de '+s.name})}`:''}
-   <h3>Notas</h3>${g.length?g.map(e=>`<div class="item tap" data-act="editev" data-id="${e.id}"><div style="flex:1"><div style="font-weight:650">${h(e.title)}</div><div class="mut small">${dShort(e.date)} · esfuerzo ${'●'.repeat(e.effort||3)}${'○'.repeat(5-(e.effort||3))}</div></div><b style="font-size:18px">${fmt(e.grade,1)}</b></div>`).join(''):'<div class="mut small">Todavía no hay notas.</div>'}
+   <h3>Notas</h3>${g.length?g.map(e=>{const W=weightOf(e);return `<div class="item tap" data-act="editev" data-id="${e.id}"><div style="flex:1;min-width:0"><div style="font-weight:650" class="ell">${h(e.title)}</div><div class="mut small">${dShort(e.date)} · ${trimOf(e.date)}º trim. · vale ${fmt(W.w,0)} %${W.auto?'':' (puesto por ti)'} · esfuerzo ${'●'.repeat(e.effort||3)}${'○'.repeat(5-(e.effort||3))}</div></div><b style="font-size:18px">${fmt(e.grade,1)}</b></div>`}).join(''):'<div class="mut small">Todavía no hay notas.</div>'}
    <button class="btn ghost sm" style="margin-top:10px" data-act="newgrade" data-s="${id}">${ic('star','s')} Añadir nota</button>
-   ${up.length?`<h3>Próximo</h3>${up.map(e=>evRow(e,true)).join('')}`:''}
+   ${g.length?`<div class="mut small" style="margin-top:8px">La media es la de los trimestres que tienen nota. Dentro de cada trimestre, los exámenes valen lo mismo salvo que pongas cuánto vale alguno (al editarlo).</div>`:''}
+   ${up.length?`<h3>Próximo</h3>${up.map(e=>evRow(e,true)+(e.kind==='examen'?s.target!=null?`<div class="est" style="margin:2px 0 8px">${needTxt(e)}.</div>`:`<div class="mut small" style="margin:2px 0 8px">Pon un objetivo de nota arriba y te digo qué necesitas sacar.</div>`:'')).join('')}`:''}
    <h3>Temario</h3><div class="mut small" style="margin-bottom:6px">Al crear un examen podrás marcar qué temas entran y el plan los irá repartiendo.</div>
    <div>${tp.map(x=>`<div class="item"><button class="check ${x.done?'on':''}" data-act="tpt" data-s="${id}" data-id="${x.id}" aria-label="Dominado">${x.done?ic('check','s'):''}</button><div style="flex:1;${x.done?'color:var(--mut);text-decoration:line-through':''}">${h(x.t)}</div><button class="navb" data-act="tpd" data-s="${id}" data-id="${x.id}" aria-label="Quitar">${ic('x','s')}</button></div>`).join('')}</div>
    <div class="row" style="margin-top:10px"><input class="inp" id="tpin" placeholder="Nuevo tema, p. ej. Tema 3: La Restauración"><button class="btn icon" data-act="tpa" data-s="${id}" aria-label="Añadir tema">${ic('plus')}</button></div>
@@ -1307,7 +1355,9 @@ function openSubj(id){
    <button class="btn danger sm" style="margin-top:16px" data-act="delsubj" data-id="${id}">${ic('trash','s')} Quitar materia</button>`);
   $('#tpin').addEventListener('keydown',e=>{if(e.key==='Enter')A.tpa({s:id})});
   let nt;$('#notes').addEventListener('input',e=>{S.notes[id]=e.target.value;clearTimeout(nt);nt=setTimeout(save,600)});
-  $('#tgt').addEventListener('change',e=>{const v=num(e.target.value);s.target=v!=null&&v>=0&&v<=10?v:null;save();render()})}
+  // Al cambiar el objetivo se vuelve a pintar la ficha (la nota que necesitas cambia) sin perder dónde estabas
+  $('#tgt').addEventListener('change',e=>{const v=num(e.target.value);s.target=v!=null&&v>=0&&v<=10?v:null;save();render();
+    const y=$('#sh').scrollTop;openSubj(id);$('#sh').scrollTop=y})}
 
 /* ====== PLAN ====== */
 // Arriba: resumen de la semana con una tira de 7 días (estudio vs. tiempo libre).
@@ -1404,6 +1454,9 @@ function openSettings(){
    <label class="f" for="setname">Nombre</label><input class="inp" id="setname" value="${h(S.name)}">
    <label class="f" for="setreg">Comunidad</label><select class="inp" id="setreg">${REGIONS.map(r=>`<option ${r===S.region?'selected':''}>${r}</option>`).join('')}</select>
    <label class="f" for="setpau">Fecha de la PAU</label><input class="inp" type="date" id="setpau" value="${S.pauDate}">
+   <div class="grid2"><div><label class="f" for="sett2">Inicio 2º trimestre</label><input class="inp" type="date" id="sett2" value="${S.trimStart.t2||''}"></div>
+     <div><label class="f" for="sett3">Inicio 3º trimestre</label><input class="inp" type="date" id="sett3" value="${S.trimStart.t3||''}"></div></div>
+   <div class="mut small" style="margin-top:6px">Si los dejas vacíos: el 2º desde enero y el 3º desde abril.</div>
    <label class="f" for="setcur">Curso</label><select class="inp" id="setcur">${[1,2].map(c=>`<option value="${c}" ${(S.curso||2)===c?'selected':''}>${c}º de Bachillerato</option>`).join('')}</select>
    ${(S.curso||2)===2?`<label class="f" for="setm1">Media de 1º de Bachillerato</label><input class="inp" id="setm1" inputmode="decimal" value="${S.media1!=null?fmt(S.media1,2):''}">`:''}
    <label class="f" for="setm2">Media de ${S.curso||2}º (vacío = la calcula con tus notas: ${fmt(media2Auto())})</label><input class="inp" id="setm2" inputmode="decimal" value="${S.media2Manual!=null?fmt(S.media2Manual,2):''}">
@@ -1572,7 +1625,7 @@ let F=null;
 function openEvent(kind,id,date){
   const e=id?evById(id):null;kind=e?e.kind:kind;
   const d=e?e.date:(date||addDays(today(),7));
-  F={kind,id:e?.id||null,subj:e?e.subj:SUBJ()[0].id,temas:e?.temas||(kind==='examen'?2:1),level:e?.level||'normal',topicIds:[...(e?.topicIds||[])],hours:e?.hours??null};
+  F={kind,id:e?.id||null,subj:e?e.subj:SUBJ()[0].id,temas:e?.temas||(kind==='examen'?2:1),level:e?.level||'normal',topicIds:[...(e?.topicIds||[])],hours:e?.hours??null,w:e?.w??null};
   const ex=kind==='examen';
   sheet(`<div class="between"><h2 style="margin:0">${e?'Editar':'Nuevo'} ${ex?'examen':'tarea'}</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <label class="f">Materia</label>${subjChips(F.subj)}
@@ -1582,6 +1635,8 @@ function openEvent(kind,id,date){
    <div class="calcrow" style="border:0;margin-top:8px"><span>Temas que entran</span><div class="step"><button class="btn icon ghost" data-act="temas" data-d="-1" aria-label="Menos">−</button><b id="tnum">${F.temas}</b><button class="btn icon ghost" data-act="temas" data-d="1" aria-label="Más">+</button></div></div>
    <label class="f">¿Cómo de fuerte es?</label><div class="chips" id="lvs">${Object.entries(LV).map(([k,v])=>`<button class="${k===F.level?'on':''}" data-act="lv" data-k="${k}">${v.l} <span class="dim small">${v.d}</span></button>`).join('')}</div>`:''}
    <label class="f" for="evh">Horas de estudio ${ex?'(vacío = cálculo automático)':'que crees que lleva'}</label><input class="inp" id="evh" inputmode="decimal" value="${F.hours!=null?fmt(F.hours,1):''}" placeholder="${ex?'automático':'1'}">
+   ${ex?`<label class="f" for="evw">Cuánto vale en el trimestre <span class="dim">(opcional)</span></label>
+   <div class="row" style="gap:8px"><input class="inp" id="evw" inputmode="decimal" style="width:110px;text-align:center" value="${F.w!=null?fmt(F.w,0):''}"><span class="mut small" id="evwh"></span></div>`:''}
    <div class="est" id="estbox"></div>
    ${e&&e.grade!=null?`<label class="f" for="evg">Nota</label><input class="inp" inputmode="decimal" id="evg" value="${fmt(e.grade,1)}">`:''}
    <div style="display:grid;gap:10px;margin-top:20px">
@@ -1590,6 +1645,7 @@ function openEvent(kind,id,date){
     ${e&&!ex?`<button class="btn ghost" data-act="evdone" data-id="${e.id}">${e.done?'Marcar como pendiente':'Marcar como entregada'}</button>`:''}
     ${e?`<button class="btn danger" data-act="delev" data-id="${e.id}">Eliminar</button>`:''}</div>`);
   $('#evd').addEventListener('input',updEst);$('#evh').addEventListener('input',()=>{F.hours=num($('#evh').value);updEst()});
+  $('#evw')?.addEventListener('input',()=>{const v=num($('#evw').value);F.w=v!=null?Math.max(0,Math.min(100,v)):null;updEst()});
   renderTopicSel();updEst()}
 function renderTopicSel(){const el=$('#tpsel');if(!el)return;const tp=S.topics[F.subj]||[];
   F.topicIds=F.topicIds.filter(id=>tp.some(x=>x.id===id));
@@ -1598,9 +1654,13 @@ function renderTopicSel(){const el=$('#tpsel');if(!el)return;const tp=S.topics[F
 function updEst(){const box=$('#estbox');if(!box)return;
   const nc=nextClass(F.subj,today()),nxc=$('#nxc');
   if(nxc)nxc.innerHTML=nc?`<button class="link left small" style="margin:8px 0 0;font-size:13.5px" data-act="setdate" data-d="${nc}">Próxima clase de ${h(sb(F.subj).name)}: ${dLong(nc).toLowerCase()}</button>`:'';
-  const date=$('#evd').value||today(),fake={id:F.id||'_',kind:F.kind,subj:F.subj,temas:F.temas,level:F.level,hours:F.hours,date};
+  const date=$('#evd').value||today(),fake={id:F.id||'_',kind:F.kind,subj:F.subj,temas:F.temas,level:F.level,hours:F.hours,date,w:F.w};
+  // Lo que vale: si no lo pones, la parte que le toca entre los exámenes de su trimestre
+  const wh=$('#evwh');if(wh){const W=weightOf({...fake,grade:0});$('#evw').placeholder=fmt(W.w,0)+' %';
+    wh.textContent=F.w!=null?`% del ${trimOf(date)}º trimestre`:`% · si lo dejas vacío, vale lo mismo que los demás del ${trimOf(date)}º trimestre`}
+  const nd=F.kind==='examen'&&date>=today()?needTxt(fake):'';
   const n=needMin(fake),W=windowDays(fake,n),start=addDays(date,-W),t=today(),from=start>t?start:t,days=Math.max(1,diff(from,date)),done=F.id?evMins(F.id):0,q=Math.max(0,n-done)/days;
-  box.innerHTML=date<=t?(F.kind==='examen'?(date<t?'Este examen ya pasó: al guardarlo te pido la nota.':'Es hoy. Cuando acaben las clases te pediré la nota.'):date<t?'La fecha ya ha pasado.':'Es para hoy.'):`Necesitarás unas <b>${fmtMin(n)}</b> de estudio. ${start>t?`Empezarás el <b>${dShort(start)}</b> con`:`Hay que empezar ya: tocan`} unas <b>${fmtMin(q)}/día</b> hasta el examen.${start<t&&q>150?'<br><span class="warnc">Vas justo de tiempo; la próxima vez apúntalo antes.</span>':''}`}
+  box.innerHTML=(date<=t?(F.kind==='examen'?(date<t?'Este examen ya pasó: al guardarlo te pido la nota.':'Es hoy. Cuando acaben las clases te pediré la nota.'):date<t?'La fecha ya ha pasado.':'Es para hoy.'):`Necesitarás unas <b>${fmtMin(n)}</b> de estudio. ${start>t?`Empezarás el <b>${dShort(start)}</b> con`:`Hay que empezar ya: tocan`} unas <b>${fmtMin(q)}/día</b> hasta el examen.${start<t&&q>150?'<br><span class="warnc">Vas justo de tiempo; la próxima vez apúntalo antes.</span>':''}`)+(nd?'<br>'+nd+'.':'')}
 
 function openGrade(id,subj,auto){
   const e=id?evById(id):null;let eff=3;
@@ -1645,21 +1705,33 @@ function openAddSubj(){
 /* ====== Temporizador ====== */
 let timerInt=null,wake=null;
 const elapsed=()=>S.timer?S.timer.acc+(S.timer.paused?0:Date.now()-S.timer.start):0;
-function startTimer(b){S.timer={key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false};save();openTimer()}
+function startTimer(b){S.timer={key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false,pomo:!!S.pomo,brks:0,brk:null};save();openTimer()}
+// Descansos (si están activados): cada 25 min de estudio, 5 de descanso. El descanso es una pausa que
+// se reanuda sola, así que no cuenta como estudio. No se para si quedan menos de 10 min.
+const POMO={work:25,rest:5};
+function pomoTick(){const T=S.timer;if(!T)return;
+  if(T.brk){if(Date.now()>=T.brk){T.brk=null;T.paused=false;T.start=Date.now();save();toast('¡Fin del descanso! A seguir');try{navigator.vibrate?.([120,80,120])}catch(e){}}return}
+  if(!T.pomo||T.paused)return;
+  const e=elapsed()/60000,n=Math.floor(e/POMO.work);
+  if(n>(T.brks||0)){T.brks=n;if(T.min-e>=10){T.acc+=Date.now()-T.start;T.paused=true;T.brk=Date.now()+POMO.rest*60000;save();try{navigator.vibrate?.(200)}catch(e){}}}}
 function openTimer(){
   const T=S.timer,s=sb(T.subj),R=110,C=2*Math.PI*R;
   sheet(`<div class="meta" style="justify-content:center;margin-top:0"><span class="dot" style="background:${col(s)}"></span>${h(s.name)} · ${T.min} min</div>
    <div style="text-align:center;font-weight:750;font-size:18px;margin:8px 0 0;text-wrap:balance">${h(T.task)}</div>
    <div class="timer"><svg width="260" height="260" viewBox="0 0 260 260" style="transform:rotate(-90deg)"><circle cx="130" cy="130" r="${R}" stroke="var(--track)" stroke-width="10" fill="none"/><circle id="tc" cx="130" cy="130" r="${R}" stroke="${col(s)}" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
    <div class="t"><div><b id="tt">00:00</b><div class="mut small" id="ts"></div></div></div></div>
-   <div class="grid2"><button class="btn ghost" data-act="tpause" id="tp">${T.paused?ic('play')+' Seguir':ic('pause')+' Pausa'}</button><button class="btn" data-act="tfinish">${ic('check')} Terminar</button></div>
+   <div class="grid2"><button class="btn ghost" data-act="tpause" id="tp"></button><button class="btn" data-act="tfinish">${ic('check')} Terminar</button></div>
+   <button class="pomo ${T.pomo?'on':''}" data-act="tpomo" id="tpomo" role="switch" aria-checked="${!!T.pomo}"><span><b>Descansos</b><small>${POMO.rest} min cada ${POMO.work} min de estudio</small></span><i></i></button>
    <button class="link" data-act="tcancel" style="color:var(--mut)">Descartar sesión</button>`);
-  const tick=()=>{if(!S.timer||!$('#tt'))return;const e=elapsed()/1000,rem=S.timer.min*60-e,a=Math.abs(rem);
-    $('#tt').textContent=(rem<0?'+':'')+String(Math.floor(a/60)).padStart(2,'0')+':'+String(Math.floor(a%60)).padStart(2,'0');
-    $('#ts').textContent=rem<0?'¡Tiempo cumplido!':S.timer.paused?'En pausa':'Concéntrate';
-    const f=Math.min(1,e/(S.timer.min*60)),tc=$('#tc'),tw=$('.timer');
+  const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
+  const tick=()=>{if(!S.timer||!$('#tt'))return;pomoTick();const T=S.timer;if(!T)return;
+    const e=elapsed()/1000,rem=T.min*60-e,a=Math.abs(rem),br=T.brk?Math.max(0,(T.brk-Date.now())/1000):null;
+    $('#tt').textContent=br!=null?mmss(br):(rem<0?'+':'')+mmss(a);
+    $('#ts').textContent=br!=null?'Descanso · estira y bebe agua':rem<0?'¡Tiempo cumplido!':T.paused?'En pausa':T.pomo&&rem>=10*60?`Concéntrate · descanso en ${Math.max(1,Math.ceil(POMO.work-(e/60)%POMO.work))} min`:'Concéntrate';
+    const tp=$('#tp'),lb=br!=null?'skip':T.paused?'play':'pause';if(tp.dataset.lb!==lb){tp.dataset.lb=lb;tp.innerHTML=br!=null?ic('right')+' Saltar':T.paused?ic('play')+' Seguir':ic('pause')+' Pausa'}
+    const f=br!=null?1-br/(POMO.rest*60):Math.min(1,e/(T.min*60)),tc=$('#tc'),tw=$('.timer');
     tc.style.strokeDashoffset=C*(1-f);tc.style.opacity=f>.003?1:0;
-    tw.classList.toggle('paused',!!S.timer.paused);tw.classList.toggle('done',rem<0)};
+    tw.classList.toggle('brk',br!=null);tw.classList.toggle('paused',!!T.paused&&br==null);tw.classList.toggle('done',rem<0&&br==null)};
   tick();timerInt=setInterval(tick,500);
   try{navigator.wakeLock?.request('screen').then(w=>{wake=w}).catch(()=>{})}catch(e){}}
 function markDone(day,key){const arr=S.planDone[day]=S.planDone[day]||[];if(!arr.includes(key))arr.push(key);
@@ -1694,7 +1766,7 @@ const A={
   dur:(d,el)=>{el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el))},
   saveev:()=>{const ex=F.kind==='examen',t=$('#evt').value.trim()||(ex?'Examen':'Tarea'),date=$('#evd').value||today();
     const fields={title:t,date,subj:picked()||F.subj,hours:num($('#evh').value)};
-    if(ex)Object.assign(fields,{temas:F.temas,level:F.level,topicIds:F.topicIds});
+    if(ex)Object.assign(fields,{temas:F.temas,level:F.level,topicIds:F.topicIds,w:F.w});
     let e;if(F.id){e=evById(F.id);Object.assign(e,fields);const g=$('#evg');if(g){const n=num(g.value);if(n!=null&&n>=0&&n<=10)e.grade=n}}
     else{e={id:uid(),kind:F.kind,grade:null,effort:null,done:false,...fields};S.events.push(e)}
     e.u=Date.now();
@@ -1710,7 +1782,10 @@ const A={
     e.grade=g;e.effort=n;e.u=Date.now();save();closeSheet();addXP(gradeXP(g,n),`${fmt(g,1)} en ${sb(e.subj).name}`);render()},
   free:()=>openFree(),
   freego:()=>startTimer({subj:picked(),min:+$('#durs .on').dataset.n,task:'Sesión libre'}),
-  tpause:()=>{const T=S.timer;if(T.paused){T.start=Date.now();T.paused=false}else{T.acc+=Date.now()-T.start;T.paused=true}save();$('#tp').innerHTML=T.paused?ic('play')+' Seguir':ic('pause')+' Pausa'},
+  tpause:()=>{const T=S.timer;if(T.brk)T.brk=null;if(T.paused){T.start=Date.now();T.paused=false}else{T.acc+=Date.now()-T.start;T.paused=true}save();$('#tp').dataset.lb=''},
+  // Activar o quitar los descansos; los que ya habrían tocado no salen de golpe
+  tpomo:()=>{const T=S.timer;T.pomo=S.pomo=!T.pomo;T.brks=Math.floor(elapsed()/60000/POMO.work);if(!T.pomo&&T.brk){T.brk=null;T.paused=false;T.start=Date.now()}
+    save();const b=$('#tpomo');b.classList.toggle('on',T.pomo);b.setAttribute('aria-checked',T.pomo);$('#tp').dataset.lb=''},
   tfinish:()=>finishTimer(),
   tcancel:()=>ask('¿Descartar esta sesión? No contará el tiempo.','Descartar',()=>{S.timer=null;save()}),
   subj:d=>openSubj(d.id),
@@ -1760,6 +1835,7 @@ const A={
   settings:()=>openSettings(),analysis:()=>openAnalysis(),progress:()=>openProgress(),pau:()=>openPau(),bag:()=>openBag(),
   managefiles:()=>openManageFiles(),addsubj:()=>openAddSubj(),
   savesettings:()=>{S.name=$('#setname').value.trim();S.region=$('#setreg').value;if($('#setpau').value)S.pauDate=$('#setpau').value;
+    S.trimStart={t2:$('#sett2').value||null,t3:$('#sett3').value||null};
     S.curso=+$('#setcur').value;if($('#setm1'))S.media1=num($('#setm1').value);
     S.media2Manual=num($('#setm2').value);save();closeSheet();toast('Ajustes guardados');render()},
   savesubj:()=>{const n=$('#nsn').value.trim();if(!n){toast('Escribe el nombre de la materia');return}
