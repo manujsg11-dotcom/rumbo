@@ -1454,7 +1454,34 @@ function vSes(){
    <label class="f" for="sesGoal">Objetivos de esta sesión <span class="dim">(opcional)</span></label>
    ${SES.goals.map((g,i)=>`<div class="item sgoal"><span class="dot" style="background:${col(sb(SES.subj))}"></span><div style="flex:1;min-width:0;overflow-wrap:anywhere">${h(g)}</div><button class="navb" data-act="sesDelGoal" data-i="${i}" aria-label="Quitar objetivo">${ic('x','s')}</button></div>`).join('')}
    <div class="row"><input class="inp" id="sesGoal" placeholder="p. ej. Hacer los ejercicios 3 a 7" maxlength="120"><button class="btn icon" data-act="sesAddGoal" aria-label="Añadir objetivo">${ic('plus')}</button></div>
-   <button class="btn" style="margin-top:16px" data-act="sesGo">${ic('play')} Empezar sesión</button></div>`}
+   <button class="btn" style="margin-top:16px" data-act="sesGo">${ic('play')} Empezar sesión</button>
+   <button class="link" data-act="addTime">${ic('plus','s')} Añadir tiempo ya estudiado</button></div>`}
+
+// Añadir tiempo a mano (se te olvidó el cronómetro): cuenta igual que una sesión para las horas, la racha y,
+// si se elige, para un examen o tarea de esa materia. ADD es el borrador de la hoja.
+let ADD=null;
+const subjEvs=id=>upcoming().filter(e=>e.subj===id);
+// Marca como hechos los bloques de hoy de ese examen que cubren esos minutos (con el 60 %, como el temporizador)
+function creditToday(evId,min){if(!evId)return 0;const t=today();let n=0;
+  for(const b of planFor(t).blocks.filter(b=>b.eventId===evId&&!isDone(t,b.key))){if(min<b.min*.6)break;markDone(t,b.key);min-=b.min;n++}
+  return n}
+function openAdd(){
+  if(!ADD){const s=sb(SES.subj)?SES.subj:SUBJ()[0].id;ADD={subj:s,min:60,day:0,date:addDays(today(),-2),ev:subjEvs(s)[0]?.id||''}}
+  const a=ADD,t=today(),evs=subjEvs(a.subj),m=a.min;
+  sheet(`<div class="between"><h2 style="margin:0">Añadir tiempo estudiado</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+   <div class="mut small" style="margin-top:6px">Para cuando estudias sin poner el cronómetro. Cuenta igual que una sesión.</div>
+   <label class="f">Materia</label>
+   <div class="chips">${SUBJ().map(s=>`<button class="${s.id===a.subj?'on':''}" data-act="addSubj" data-s="${s.id}"><span class="dot" style="background:${col(s)}"></span>${h(s.name)}</button>`).join('')}</div>
+   <div class="sesdur"><label for="addMin" class="mut small">Cuánto tiempo</label><div><b class="num" id="addMinV">${m}</b> <span class="mut">min</span></div></div>
+   <input type="range" id="addMin" class="range" min="5" max="240" step="5" value="${m}" aria-label="Minutos estudiados" style="--p:${(m-5)/235*100}%">
+   <label class="f">Cuándo</label>
+   <div class="seg" style="display:flex">${['Hoy','Ayer','Otro día'].map((x,i)=>`<button style="flex:1" class="${a.day===i?'on':''}" data-act="addDay" data-i="${i}">${x}</button>`).join('')}</div>
+   ${a.day===2?`<input type="date" class="inp" id="addDate" max="${addDays(t,-1)}" value="${a.date}" aria-label="Día que estudiaste" style="margin-top:10px">`:''}
+   ${evs.length?`<label class="f">¿Para qué era?</label>
+   <div class="chips">${evs.map(e=>`<button class="${a.ev===e.id?'on':''}" data-act="addEv" data-id="${e.id}">${h(e.title)} <span class="dim">· ${inDays(diff(t,e.date))}</span></button>`).join('')}<button class="${a.ev?'':'on'}" data-act="addEv" data-id="">Nada en concreto</button></div>
+   <div class="mut small" style="margin-top:8px">${a.ev?'El plan lo descuenta de lo que te queda para ese examen.':'Contará para tus horas y tu racha.'}</div>`
+   :`<div class="mut small" style="margin-top:14px">No tienes exámenes ni tareas de esta materia: contará para tus horas y tu racha.</div>`}
+   <button class="btn" style="margin-top:18px" data-act="addSave">${ic('plus')} Añadir <span id="addBtnV">${fmtMin(m)}</span></button>`)}
 
 function vClase(){
   const t=today(),m=minsBy(addDays(t,-6),t);
@@ -1876,6 +1903,7 @@ function finishTimer(){
   const T=S.timer,m=Math.max(1,Math.round(elapsed()/60000));
   S.log.push({id:uid(),date:today(),subj:T.subj,min:m,eventId:T.eventId,key:T.key});
   let xp=m;if(T.key&&m>=T.min*0.6){markDone(T.day,T.key);xp+=15}
+  else if(!T.key&&T.eventId&&T.day===today())xp+=15*creditToday(T.eventId,m);
   const gs=T.goals||[],gd=gs.filter(g=>g.done).length;
   S.timer=null;try{wake?.release()}catch(e){}save();closeSheet();addXP(xp,`${fmtMin(m)} de ${sb(T.subj).name}`+(gs.length?` · ${gd} de ${gs.length} objetivos`:''));render()}
 
@@ -1923,7 +1951,19 @@ const A={
     SES.goals.push(v);render();setTimeout(()=>$('#sesGoal')?.focus(),30)},
   sesDelGoal:d=>{SES.goals.splice(+d.i,1);render()},
   sesGo:()=>{const v=$('#sesGoal')?.value.trim();if(v&&SES.goals.length<8)SES.goals.push(v);
-    startTimer({subj:SES.subj,min:S.sesMin||45,task:'Sesión libre',goals:SES.goals.map(t=>({t,done:false}))});SES.goals=[];render()},
+    // Cuenta para el próximo examen o tarea de esa materia, si lo hay
+    startTimer({subj:SES.subj,eventId:subjEvs(SES.subj)[0]?.id,min:S.sesMin||45,task:'Sesión libre',goals:SES.goals.map(t=>({t,done:false}))});SES.goals=[];render()},
+  addTime:()=>{ADD=null;openAdd()},
+  addSubj:d=>{if(ADD.subj===d.s)return;ADD.subj=d.s;ADD.ev=subjEvs(d.s)[0]?.id||'';openAdd()},
+  addDay:d=>{const v=$('#addDate');if(v)ADD.date=v.value||ADD.date;if(ADD.day===+d.i)return;ADD.day=+d.i;openAdd()},
+  addEv:d=>{if(ADD.ev===d.id)return;ADD.ev=d.id;openAdd()},
+  addSave:()=>{const a=ADD,t=today(),date=a.day===0?t:a.day===1?addDays(t,-1):($('#addDate')?.value||a.date);
+    if(date>t){toast('Ese día todavía no ha llegado');return}
+    const ev=a.ev&&evById(a.ev)?a.ev:null;
+    S.log.push({id:uid(),date,subj:a.subj,min:a.min,eventId:ev,man:1});
+    // Si es de hoy, tacha los bloques de ese examen que ya cubre
+    const nb=date===t?creditToday(ev,a.min):0;
+    ADD=null;save();closeSheet();addXP(a.min+nb*15,`${fmtMin(a.min)} de ${sb(a.subj).name}`+(date<t?` (${a.day===1?'ayer':'el '+WDL[parse(date).getDay()]})`:''));render()},
   timeropen:()=>{if(S.timer)openTimer()},
   tgoal:d=>{const g=S.timer?.goals?.[+d.i];if(!g)return;g.done=!g.done;save();const el=$('#tgoals');if(el){el.innerHTML=tGoalsHtml(S.timer);if(g.done)el.querySelectorAll('.check')[+d.i].classList.add('fx')}},
   missedOk:()=>{if(S.missed)S.missed.seen=1;save();render()},
@@ -2061,7 +2101,9 @@ setTimeout(maybeAskGrade,1500);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheetOpen()){render();maybeAskGrade()}});
 document.addEventListener('keydown',ev=>{if(ev.key!=='Enter')return;if(ev.target.id==='onbExtra')A.obAdd();else if(ev.target.id==='sesGoal'){ev.preventDefault();A.sesAddGoal()}});
 // La barra de duración de «Estudiar ahora» se actualiza sin repintar la pestaña
-document.addEventListener('input',ev=>{if(ev.target.id!=='sesMin')return;const m=+ev.target.value;S.sesMin=m;
+document.addEventListener('input',ev=>{if(ev.target.id==='addMin'&&ADD){const m=ADD.min=+ev.target.value;
+    ev.target.style.setProperty('--p',(m-5)/235*100+'%');$('#addMinV').textContent=m;$('#addBtnV').textContent=fmtMin(m);return}
+  if(ev.target.id!=='sesMin')return;const m=+ev.target.value;S.sesMin=m;
   ev.target.style.setProperty('--p',(m-5)/175*100+'%');$('#sesMinV').textContent=m;$('#sesEnd').innerHTML=sesEndTxt(m);save()});
 initSync();
 // Si la sincronización no contesta, el cuestionario sale igualmente
