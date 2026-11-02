@@ -298,6 +298,54 @@ button,.tap{transition:transform .18s var(--ease),background-color .22s ease,bor
 .timer.done .t b{animation:pop .6s var(--spring);color:var(--ok)}
 /* Cambio de estilo: los colores se funden */
 html.theming *,html.theming *::before{transition:background-color .4s ease,color .4s ease,border-color .4s ease,fill .4s ease,stroke .4s ease!important}
+/* ====== Ayudas para empezar ======
+   Pistas en pantallas vacías (.hint, .tiphint), la tarjeta de primeros pasos (.guide),
+   el aviso «¿Te enseño la app?» (.offer) y la guía que ilumina cada parte (#tour).
+   Los fondos llevan var(--bg) debajo para que no se transparenten en los estilos de cristal. */
+.hint{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:14px 6px 8px}
+.hint .hic{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc2);margin-bottom:6px}
+.hint b{font-size:16px}
+.hint>span:not(.hic){color:var(--mut);font-size:14px;line-height:1.45;max-width:36ch;text-wrap:pretty}
+.hint .btn{margin-top:10px}
+.tiphint{display:flex;gap:10px;align-items:center;color:var(--mut);font-size:13.5px;line-height:1.4;margin:-4px 2px 14px}
+.tiphint svg{color:var(--acc2)}
+.guide .bar{height:4px;margin:8px 0 4px}
+.gi{display:flex;align-items:center;gap:12px;width:100%;padding:11px 0;border:0;border-top:1px solid var(--line);background:none;text-align:left;font:inherit;color:var(--tx);cursor:pointer}
+.guide .bar+.gi{border-top:0}
+.gi>svg{color:var(--dim)}
+.gt{font-weight:650}
+.gi.ok{cursor:default}.gi.ok .gt{color:var(--mut);text-decoration:line-through;font-weight:500}
+.gck{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none;color:#fff}
+.gi.ok .gck{background:var(--ok);border-color:var(--ok)}
+.gck.fx{animation:pop .5s var(--spring)}
+.gi:not(.ok):active{transform:scale(.98)}
+.guide.gdone{max-height:420px;overflow:hidden;animation:gout .6s var(--ease) forwards}
+@keyframes gout{to{opacity:0;transform:scale(.97);max-height:0;padding-top:0;padding-bottom:0;margin-bottom:0;border-width:0}}
+.offer{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(440px,calc(100vw - 32px));display:flex;align-items:center;gap:8px;padding:10px 8px 10px 16px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(var(--card2),var(--card2)),var(--bg);box-shadow:0 12px 34px rgba(0,0,0,.35);z-index:30;animation:offIn .55s var(--spring) backwards}
+.offer b{display:block;font-size:15px}.offer span{display:block;color:var(--mut);font-size:13.5px;margin-top:2px;line-height:1.3}
+.offer .btn.sm{flex:none;padding:0 16px}
+.offer.off{animation:offOut .25s ease forwards;pointer-events:none}
+@keyframes offIn{from{opacity:0;transform:translateX(-50%) translateY(22px) scale(.95)}}
+@keyframes offOut{to{opacity:0;transform:translateX(-50%) translateY(14px) scale(.97)}}
+body:has(#offer) .toast{bottom:calc(164px + env(safe-area-inset-bottom,0px))}
+body.touring{overflow:hidden}
+#tour{position:fixed;inset:0;z-index:70;touch-action:none;cursor:pointer;opacity:0;transition:opacity .3s ease}
+#tour.on{opacity:1}#tour.off{opacity:0;pointer-events:none}
+.tspot{position:fixed;box-shadow:0 0 0 200vmax rgba(0,0,0,.64);pointer-events:none;transition:left .5s var(--ease),top .5s var(--ease),width .5s var(--ease),height .5s var(--ease),border-radius .5s var(--ease)}
+.tspot::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid var(--acc2);animation:tpulse 1.8s ease-out infinite}
+@keyframes tpulse{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.22)}}
+.tbub{position:fixed;width:min(320px,calc(100vw - 32px));padding:14px 16px 12px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(var(--card),var(--card)),var(--bg);color:var(--tx);box-shadow:0 14px 40px rgba(0,0,0,.4);cursor:default}
+.tbub::before{content:"";position:absolute;left:calc(var(--ax,50%) - 7px);width:14px;height:14px;background:inherit;border:inherit;border-radius:3px;transform:rotate(45deg)}
+.tbub.up::before{top:-8px;border-right:0;border-bottom:0}.tbub.dn::before{bottom:-8px;border-left:0;border-top:0}
+.tbub.in{animation:tbin .42s var(--ease) backwards}.tbub.in.up{animation-name:tbinU}
+@keyframes tbin{from{opacity:0;transform:translateY(12px) scale(.97)}}
+@keyframes tbinU{from{opacity:0;transform:translateY(-12px) scale(.97)}}
+.tbub.in>*{animation:fadein .4s ease backwards .08s}
+.tstep{display:flex;gap:5px}.tstep i{width:6px;height:6px;border-radius:6px;background:var(--line);transition:width .3s var(--ease)}.tstep i.on{width:18px;background:var(--acc)}
+.tbub b{display:block;font-size:18px;margin:10px 0 4px}
+.tbub p{margin:0;color:var(--mut);font-size:14.5px;line-height:1.45}
+.tnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.tnav .link{margin:0;color:var(--mut);font-weight:600;font-size:14.5px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 <!-- TEMAS: lo genera app/disenos/temas.ps1 a partir de app/disenos/tema-*.css; no editar a mano -->
@@ -760,9 +808,13 @@ function defaults(){return{
   schedX:[],
   // mat = nota de la troncal de modalidad (la que entra en la fase de acceso)
   pau:{histChoice:'hes',len:'',hist:'',ing:'',mat:'',troncal:'mat',esp:{},w:{},target:''},
+  // Ayudas para empezar: tour = guía de la app ofrecida, steps = tarjeta de primeros pasos (1 = ya no sale)
+  intro:{tour:0,steps:0},
   topics:{},notes:{},memos:[],files:[],timer:null,xpLog:[],del:{},resetAt:0,updatedAt:0}}
-// Datos guardados antes de existir el cuestionario: ya están configurados
-function hydrate(o){const d=defaults(),s=Object.assign(d,o);s.pau=Object.assign(defaults().pau,o.pau||{});if(o.setup==null)s.setup=true;return s}
+// Datos guardados antes de existir el cuestionario: ya están configurados.
+// Quien ya usaba la app antes de las ayudas no las ve (puede abrir la guía desde Ajustes).
+function hydrate(o){const d=defaults(),s=Object.assign(d,o);s.pau=Object.assign(defaults().pau,o.pau||{});if(o.setup==null)s.setup=true;
+  if(o.intro==null&&o.setup!==false)s.intro={tour:1,steps:1};return s}
 function load(){try{const r=localStorage.getItem(KEY);if(r)return hydrate(JSON.parse(r))}catch(e){}return defaults()}
 let S=load();
 let tab='inicio';try{tab=localStorage.getItem(KEY+'.tab')||'inicio'}catch(e){}
@@ -986,16 +1038,16 @@ function vOnb(){
     <label class="f" for="onbName">¿Cómo te llamas?</label><input class="inp" id="onbName" value="${h(OB.name)}" placeholder="Tu nombre" autocomplete="given-name">
     ${nav(true,'Empezar')}
     <button class="link" style="margin-top:-12px" data-act="xfer">¿Ya usas Rumbo en otro móvil u ordenador? Trae tus datos</button>`;
-  else if(st===1)o+=`<div class="big">¿En qué curso estás?</div>
+  else if(st===1)o+=`<div class="big">¿En qué curso estás?</div><div class="mut">Así te propongo las asignaturas de tu curso.</div>
     ${[1,2].map(c=>`<button class="opt ${OB.curso===c?'on':''}" data-act="obCurso" data-c="${c}"><b>${c}º de Bachillerato</b><span>${c===2?'Este año tienes la PAU':'La PAU será el año que viene'}</span></button>`).join('')}
     ${OB.curso===2?`<label class="f" for="onbM1">Tu media de 1º de Bachillerato</label><input class="inp" id="onbM1" inputmode="decimal" value="${h(OB.media1)}" placeholder="p. ej. 7,85">
     <div class="mut small" style="margin-top:6px">Sirve para calcular tu nota de la PAU. Si no la sabes, déjalo vacío y la pones luego en Ajustes.</div>`:''}
     ${nav(true)}`;
-  else if(st===2)o+=`<div class="big">¿Qué modalidad haces?</div>
+  else if(st===2)o+=`<div class="big">¿Qué modalidad haces?</div><div class="mut">Con ella te sugiero tus asignaturas y sé cuál cuenta para la PAU.</div>
     ${Object.entries(MODS).map(([k,m])=>`<button class="opt ${OB.mod===k?'on':''}" data-act="obMod" data-m="${k}"><b>${m.n}</b><span>${m.d}</span></button>`).join('')}
     ${nav(!!OB.mod)}`;
   else if(st===3){const M=MODS[OB.mod],ts=M.t.filter(inCurso),os=M.o.filter(id=>inCurso(id)&&id!==OB.troncal),full=obCount()>=MAX_SUBJ;
-    o+=`<div class="big">Tus asignaturas</div><div class="mut">Toca para marcar o quitar. Puedes cambiarlas cuando quieras desde Perfil.</div>
+    o+=`<div class="big">Tus asignaturas</div><div class="mut">Cada una tendrá sus notas, sus exámenes y su plan de estudio. Toca para marcar o quitar; puedes cambiarlas cuando quieras desde Perfil.</div>
     ${ts.length>1?`<label class="f">Tu troncal de modalidad (la que entra en la PAU)</label><div class="chips">${ts.map(id=>chip(id,OB.troncal===id,'obTr')).join('')}</div>`:''}
     <label class="f">Comunes</label><div class="chips">${COMMON[OB.curso].map(id=>chip(id,OB.picks.has(id),'obPick')).join('')}${ts.length===1?chip(ts[0],true,'obTr'):''}</div>
     <label class="f">De modalidad <span class="dim">(normalmente eliges 2)</span></label><div class="chips">${os.map(id=>chip(id,OB.picks.has(id),'obPick',full&&!OB.picks.has(id)?'disabled':'')).join('')}</div>
@@ -1022,8 +1074,9 @@ function obFinish(){
   S.media1=c===2?num(OB.media1):null;
   S.pau.troncal=OB.troncal;S.pau.histChoice='hes';
   S.avail=[OB.we,OB.wd,OB.wd,OB.wd,OB.wd,OB.wd,OB.we];
-  S.setup=true;tab='inicio';save();render();scrollTo(0,0);
-  toast(OB.name?`¡Listo, ${OB.name}! Añade tu primer examen con el +`:'¡Listo! Añade tu primer examen con el +')}
+  // Recién configurado: se ofrece la guía y salen los primeros pasos en Inicio
+  S.intro={tour:0,steps:0};obJust=true;
+  S.setup=true;tab='inicio';save();render();scrollTo(0,0)}
 
 /* ====== INICIO ====== */
 function vInicio(){
@@ -1040,6 +1093,7 @@ function vInicio(){
   if(bl.length)o+=`<button class="link" data-act="tab" data-t="plan">Plan de hoy: ${done} de ${bl.length} · ${fmtMin(P.total)} ${ic('right','s')}</button>`;
   if(P.over)o+=`<div class="warnbox">${ic('alert','s')}<div>Hoy necesitas <b>${fmtMin(P.total)}</b> y tenías ${fmtMin(P.avail)} libres: hay un examen cerca con mucho contenido. Si no llegas, lo que falte se reparte en los días siguientes. <button class="link left" style="display:inline;margin:0;font-size:13.5px" data-act="availedit">Cambiar mi tiempo libre</button></div></div>`;
   o+='</div>';
+  o+=vGuide();
   const pg=pendingGrades();
   if(pg.length)o+=`<div class="card tight"><div class="between"><div class="eyebrow">¿Qué has sacado?</div><span class="pill warm">${pg.length} sin nota</span></div>
     ${pg.slice(0,3).map(e=>`<div class="item"><span class="cbar" style="background:${col(sb(e.subj))}"></span><div style="flex:1;min-width:0"><div class="ell" style="font-weight:650">${h(sb(e.subj).name)}</div><div class="mut small ell">${h(e.title)} · ${dShort(e.date)}</div></div><button class="btn sm" data-act="grade" data-id="${e.id}">Poner nota</button></div>`).join('')}
@@ -1047,8 +1101,70 @@ function vInicio(){
   o+=vStreak();
   o+=`<h2>Calendario</h2>${vCal()}`;
   const up=upcoming().slice(0,5);
-  o+=`<h2>Próximamente</h2><div class="card tight">${up.length?up.map(e=>evRow(e,true)).join(''):`<div class="empty">Nada a la vista. Añade exámenes o tareas con el botón +.</div>`}</div>`;
+  o+=`<h2>Próximamente</h2><div class="card tight">${up.length?up.map(e=>evRow(e,true)).join(''):hint('cal','Nada a la vista','Tus próximos exámenes y tareas saldrán aquí y en el calendario, con lo que llevas preparado de cada uno.',`<button class="btn sm ghost" data-act="quick">${ic('plus','s')} Añadir examen o tarea</button>`)}</div>`;
   return o}
+
+/* ====== Ayudas para empezar ====== */
+// Pantalla vacía que explica para qué sirve esa parte y ofrece el primer paso
+const hint=(icon,title,text,btn='')=>`<div class="hint"><span class="hic">${ic(icon)}</span><b>${title}</b><span>${text}</span>${btn}</div>`;
+// Primeros pasos (en Inicio): tres cosas para arrancar; al completarlas da un poco de XP y se va
+let guidePrev=null,guideDoneAt=0;
+const GUIDE=[
+  {t:'Añade tu primer examen',d:'Con él se monta tu plan de estudio',act:'data-act="newev" data-k="examen"',ok:()=>S.events.some(e=>e.kind==='examen')},
+  {t:'Pon tu horario de clase',d:'Para repasar lo que das cada día',act:'data-act="guideSched"',ok:()=>Object.values(S.sched).some(d=>d.some(Boolean))},
+  {t:'Estudia tu primer bloque',d:'Con el temporizador; unos minutos bastan',act:'data-act="guideStudy"',ok:()=>S.log.length>0}];
+function vGuide(){
+  const since=Date.now()-guideDoneAt;if(S.intro.steps&&since>2400)return '';
+  const ok=GUIDE.map(g=>g.ok()),n=ok.filter(Boolean).length,prev=guidePrev;guidePrev=ok;
+  if(!S.intro.steps&&n===GUIDE.length){S.intro.steps=1;guideDoneAt=Date.now();save();
+    setTimeout(()=>{addXP(30,'primeros pasos completados');if(!sheetOpen())render()},700)}
+  const fin=!!S.intro.steps;
+  return `<div class="card tight guide ${fin?'gdone':''}" ${fin?`style="animation-delay:${Math.max(0,1500-(Date.now()-guideDoneAt))}ms"`:''}>
+   <div class="between"><div class="eyebrow">Primeros pasos · ${n} de ${GUIDE.length}</div>${fin?`<span class="pill blue">¡Hecho!</span>`:`<button class="navb" data-act="guideHide" aria-label="Ocultar primeros pasos">${ic('x','s')}</button>`}</div>
+   <div class="bar"><i style="width:${n/GUIDE.length*100}%;background:var(--acc)"></i></div>
+   ${GUIDE.map((g,i)=>ok[i]?`<div class="gi ok"><span class="gck ${prev&&!prev[i]?'fx':''}">${ic('check','s')}</span><div class="gt">${g.t}</div></div>`
+     :`<button class="gi" ${g.act}><span class="gck"></span><div style="flex:1;min-width:0"><div class="gt">${g.t}</div><div class="mut small">${g.d}</div></div>${ic('right','s')}</button>`).join('')}</div>`}
+
+// Guía de la app: tras el cuestionario se ofrece (sin obligar) un recorrido corto que ilumina cada parte.
+// También se abre desde Ajustes. Se lleva fuera de #main para que los repintados no la toquen.
+const TOUR=[
+  {q:'.tb[data-t="inicio"]',t:'Inicio',d:'Lo que te toca hoy, tu racha y el calendario con tus exámenes y tareas.'},
+  {q:'.tb[data-t="clase"]',t:'Clase',d:'Tus materias una a una: cómo vas, el temario y tus apuntes de cada una.'},
+  {q:'.tb[data-t="plan"]',t:'Plan',d:'Qué estudiar cada día, numerado de más a menos importante. Aquí también cambias tu tiempo libre.'},
+  {q:'.tb[data-t="perfil"]',t:'Perfil',d:'Tus medias, las gráficas, la calculadora de la PAU y los ajustes.'},
+  {q:'.fab',t:'El botón +',d:'Para añadir exámenes, tareas o notas, o ponerte a estudiar con el temporizador.'},
+  {q:'#top [data-act="schedview"]',t:'Tu horario',d:'Discreto, aquí arriba. Ponlo una vez y el plan repasará lo que das cada día en clase.'}];
+let tourI=-1,offerT=0,obJust=false;
+function tourStart(){if(tourI>=0||!S.setup)return;offerHide();scrollTo(0,0);tourI=0;
+  const T=document.createElement('div');T.id='tour';T.dataset.act='tourNext';
+  T.innerHTML='<div class="tspot"></div><div class="tbub" role="dialog" aria-modal="true" aria-live="polite" data-act="noop"></div>';
+  document.body.appendChild(T);document.body.classList.add('touring');tourShow(true);
+  requestAnimationFrame(()=>T.classList.add('on'))}
+function tourShow(anim){const T=$('#tour');if(!T)return;const st=TOUR[tourI],tg=$(st.q);
+  if(!tg||!tg.getClientRects().length)return tourI<TOUR.length-1?(tourI++,tourShow(anim)):tourEnd();
+  const r=tg.getBoundingClientRect(),p=6,sp=T.querySelector('.tspot'),b=T.querySelector('.tbub'),last=tourI===TOUR.length-1;
+  const br=parseFloat(getComputedStyle(tg).borderRadius)||12;
+  Object.assign(sp.style,{left:r.left-p+'px',top:r.top-p+'px',width:r.width+2*p+'px',height:r.height+2*p+'px',borderRadius:br*2>=r.height?'999px':br+p+'px'});
+  if(anim)b.innerHTML=`<div class="tstep">${TOUR.map((_,i)=>`<i class="${i===tourI?'on':''}"></i>`).join('')}</div><b>${st.t}</b><p>${st.d}</p>
+    <div class="tnav">${last?'<span></span>':'<button class="link left" data-act="tourEnd">Saltar</button>'}<button class="btn sm" data-act="tourNext">${last?'Entendido':'Siguiente'}</button></div>`;
+  // Encima del elemento si está en la mitad de abajo; si no, debajo. La flecha apunta a su centro.
+  const W=b.offsetWidth,cx=r.left+r.width/2,left=Math.max(16,Math.min(innerWidth-16-W,cx-W/2)),below=r.top+r.height/2<innerHeight/2;
+  b.classList.toggle('up',below);b.classList.toggle('dn',!below);
+  Object.assign(b.style,{left:left+'px',top:below?r.bottom+p+14+'px':'auto',bottom:below?'auto':innerHeight-r.top+p+14+'px'});
+  b.style.setProperty('--ax',Math.max(22,Math.min(W-22,cx-left))+'px');
+  if(anim){b.classList.remove('in');void b.offsetWidth;b.classList.add('in');b.querySelector('.btn').focus({preventScroll:true})}}
+function tourEnd(){const T=$('#tour');tourI=-1;S.intro.tour=1;save();document.body.classList.remove('touring');
+  if(T){T.classList.add('off');setTimeout(()=>T.remove(),300)}}
+// Aviso pequeño encima de la barra: «¿Te enseño la app?». No tapa nada y se puede ignorar.
+function offerShow(){if(S.intro.tour||!S.setup||tourI>=0||$('#offer'))return;
+  const o=document.createElement('div');o.id='offer';o.className='offer';o.setAttribute('role','status');
+  o.innerHTML=`<div style="flex:1;min-width:0"><b>${obJust?(S.name?`¡Listo, ${h(S.name)}!`:'¡Todo listo!'):'¿Te enseño la app?'}</b><span>${obJust?'¿Te enseño la app? Son 6 pasos rápidos.':'Son 6 pasos rápidos.'}</span></div>
+    <button class="btn sm" data-act="tourGo">Vale</button><button class="navb" data-act="tourNo" aria-label="Ahora no">${ic('x','s')}</button>`;
+  document.body.appendChild(o)}
+function offerHide(){const o=$('#offer');if(!o)return;o.id='';o.classList.add('off');setTimeout(()=>o.remove(),260)}
+addEventListener('resize',()=>{if(tourI>=0)tourShow(false)});
+document.addEventListener('keydown',ev=>{if(tourI<0)return;
+  if(ev.key==='Escape')tourEnd();else if(ev.key==='ArrowRight'){ev.preventDefault();A.tourNext()}});
 
 // Racha: días seguidos estudiando, con la semana actual en puntos
 function vStreak(){
@@ -1136,6 +1252,7 @@ function vSched(){
   let o=`<div class="between"><div><div class="eyebrow">Horario</div><div style="font-weight:800;font-size:20px;margin-top:6px">${title}</div></div>
     <div class="row" style="gap:6px"><button class="circ" style="width:38px;height:38px" data-act="schedit" aria-label="Editar horario">${ic('edit','s')}</button><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div></div>
    <div class="seg" style="display:flex;margin:14px 0 4px">${[1,2,3,4,5].map(w=>`<button style="flex:1" class="${w===schedSel?'on':''}" data-act="schedday" data-w="${w}">${'LMXJV'[w-1]}</button>`).join('')}</div>`;
+  if(!Object.values(S.sched).some(d=>d.some(Boolean)))return o+hint('cal','Aún no has puesto tu horario','Ponlo una vez: el plan repasará lo que das cada día y, al crear un examen, te propondré la fecha de tu próxima clase.',`<button class="btn sm" data-act="schedit">${ic('edit','s')} Poner mi horario</button>`);
   SLOTS.forEach((sl,i)=>{
     if(i===3)o+=`<div class="item" style="padding:7px 0"><span class="mut small" style="width:44px;flex:none">11:15</span><span class="dim small">Recreo</span></div>`;
     const c=cl[i]||'',app=isSubj(c),s=app?sb(c):null,cur=isToday&&mins>=toMin(sl[0])&&mins<toMin(sl[1]);
@@ -1162,6 +1279,7 @@ let schedEd=1;
 function vClase(){
   const t=today(),m=minsBy(addDays(t,-6),t);
   let o=`<h2 style="margin-top:4px">Tus materias</h2>`;
+  if(!graded().length&&!Object.values(S.topics).some(x=>x.length))o+=`<div class="tiphint">${ic('book','s')}<span>Toca una materia para ver cómo vas, apuntar su temario y guardar apuntes.</span></div>`;
   for(const s of SUBJ()){const a=subjAvg(s.id),n=subjGrades(s.id).length,nx=upcoming().find(e=>e.subj===s.id),tp=S.topics[s.id]||[],td=tp.filter(x=>x.done).length;
     let prep_='';if(nx){const p=prep(nx),f=Math.min(1,p.all/p.n);
       prep_=`<div style="margin-top:12px"><div class="between small"><span>${nx.kind==='examen'?'Preparación del examen':'Tarea'} · ${h(nx.title)}</span><span class="mut">${Math.round(f*100)} %</span></div><div class="bar" style="margin-top:5px"><i style="width:${f*100}%;background:${col(s)}"></i></div><div class="mut small" style="margin-top:5px">${fmtMin(p.all)} de ~${fmtMin(p.n)} · ${nx.date===t?(nx.kind==='examen'?'es hoy, ¡suerte!':'se entrega hoy'):`ritmo ${fmtMin(p.quota)}/día`}</div></div>`}
@@ -1227,7 +1345,8 @@ function vPlan(){
   // Exámenes y tareas
   const up=upcoming();
   o+=`<div class="between"><h2>Exámenes y tareas</h2><button class="circ" style="width:38px;height:38px" data-act="newev" data-k="examen" aria-label="Añadir">${ic('plus','s')}</button></div>
-   <div class="card tight">${up.length?up.map(e=>evRow(e,true)).join(''):'<div class="empty">No hay nada pendiente. Añade un examen con el +.</div>'}</div>`;
+   <div class="card tight">${up.length?up.map(e=>evRow(e,true)).join(''):S.events.length?'<div class="empty">No hay nada pendiente. Añade un examen con el +.</div>'
+     :hint('exam','Aún no tienes exámenes','Añade uno y te reparto lo que hay que estudiar en los días que tienes libres, de más a menos importante.',`<button class="btn sm" data-act="newev" data-k="examen">${ic('plus','s')} Añadir un examen</button>`)}</div>`;
   // Lo estudiado esta semana
   const ws=monday(t),m=minsBy(ws,addDays(ws,6)),tot=sum(Object.values(m)),studied=SUBJ().filter(s=>m[s.id]),mx2=Math.max(30,...Object.values(m));
   o+=`<h2>Estudiado esta semana</h2><div class="card tight"><div class="between"><span class="mut">Total</span><b>${fmtMin(tot)}</b></div>
@@ -1290,6 +1409,7 @@ function openSettings(){
    <label class="f" for="setm2">Media de ${S.curso||2}º (vacío = la calcula con tus notas: ${fmt(media2Auto())})</label><input class="inp" id="setm2" inputmode="decimal" value="${S.media2Manual!=null?fmt(S.media2Manual,2):''}">
    <button class="btn" style="margin-top:18px" data-act="savesettings">Guardar</button>
    <div class="note">${syncState==='ok'?'Tus datos se sincronizan entre el ordenador y el iPhone automáticamente.':syncState==='err'?'No se ha podido sincronizar ahora mismo; se guardan en este dispositivo y se subirán cuando vuelva la conexión.':'Tus datos se guardan en este dispositivo. Para llevarlos a otro, usa «Pasar mis datos a otro dispositivo».'}</div>
+   <button class="btn ghost" style="margin-top:12px" data-act="tourGo">${ic('map','s')} Ver la guía de la app</button>
    <button class="btn ghost" style="margin-top:12px" data-act="xfer">${ic('right','s')} Pasar mis datos a otro dispositivo</button>
    <button class="btn danger sm" style="margin-top:14px" data-act="reset">${ic('trash','s')} Borrar todos mis datos</button>`)}
 
@@ -1623,6 +1743,13 @@ const A={
   obDelX:d=>{OB.extra.splice(+d.i,1);render()},
   obTime:d=>{OB[d.k]=+d.n;render()},
   obDone:()=>obFinish(),
+  guideHide:()=>{S.intro.steps=1;save();render()},
+  guideSched:()=>{schedEd=1;openSched()},
+  guideStudy:()=>{const t=today(),b=planFor(t).blocks.find(x=>!isDone(t,x.key));b?startTimer(b):openFree()},
+  tourGo:()=>{const w=sheetOpen();closeSheet();offerHide();setTimeout(tourStart,w?280:120)},
+  tourNo:()=>{S.intro.tour=1;save();offerHide();toast('Cuando quieras, está en Perfil → Ajustes')},
+  tourNext:()=>{if(tourI<0)return;if(tourI>=TOUR.length-1)return tourEnd();tourI++;tourShow(true)},
+  tourEnd:()=>tourEnd(),noop:()=>{},
   xfer:()=>openXfer(),
   xcopy:async()=>{const code=await packState(),o=$('#xout');if(o){o.value=code;o.style.display='block'}
     try{await navigator.clipboard.writeText(code);toast('Copiado. Mándatelo y pégalo en el otro dispositivo')}
@@ -1699,7 +1826,9 @@ function render(){
   setTop(vTop());
   setMain(tab==='clase'?vClase():tab==='plan'?vPlan():tab==='perfil'?vPerfil():vInicio(),tab);
   applyFX();
-  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===tab))}
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+  if(tourI>=0)tourShow(false);
+  else if(!S.intro.tour&&!offerT&&!$('#offer'))offerT=setTimeout(()=>{offerT=0;offerShow()},obJust?900:1800)}
 render();
 if(S.timer)openTimer();
 setTimeout(maybeAskGrade,1500);
