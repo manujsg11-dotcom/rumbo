@@ -1026,6 +1026,11 @@ function prep(e){
 function topicNames(e){const tp=S.topics[e.subj]||[];if(!e.topicIds||!e.topicIds.length)return null;const ns=e.topicIds.map(id=>tp.find(x=>x.id===id)?.t).filter(Boolean);return ns.length?ns:null}
 
 /* ====== Generador del plan diario ====== */
+// Cuánto te juegas en una materia según tu media: por debajo de 7,5 sube la prioridad (hasta ×1,35 con
+// suspensos) y con notas altas baja un poco (×0,85 con un 9). Si no llegas a tu objetivo, sube algo más.
+// Sin notas todavía no cambia nada.
+function gradeRisk(id){const a=subjAvg(id);if(a==null)return 1;const t=sb(id)?.target;
+  let r=1+Math.max(-.15,Math.min(.35,(7.5-a)/10));if(t!=null&&a<t)r+=Math.min(.15,(t-a)/10);return Math.min(1.45,r)}
 function planFor(day){
   const t=today(),avail=availOn(day),blocks=[];
   const evs=S.events.filter(e=>e.grade==null&&!e.done&&e.date>day).sort((a,b)=>a.date<b.date?-1:1);
@@ -1036,13 +1041,14 @@ function planFor(day){
     const nb=Math.ceil(q/60),d=diff(day,e.date),ph=e.kind==='tarea'?-1:d>7?0:d>3?1:d>1?2:3;
     const frac=p.n?Math.min(.99,(p.all+Math.max(0,diff(t,day))*p.quota)/p.n):0;
     const tps=topicNames(e),T=tps?tps.length:(e.temas||1),list=TASKS[e.subj]||TASKS[ALIAS[e.subj]]||TASKS._;
-    // Importancia: cuanto más cerca, más fuerte y más atrasado, antes va
-    const prio=(e.kind==='examen'?LV[e.level||'normal'].m*3:2.5)/Math.max(1,d)*(p.late?1.3:1);
+    // Importancia: cuanto más cerca, más fuerte, más atrasado y peor vayas en la materia, antes va
+    const rk=e.kind==='examen'?gradeRisk(e.subj):1,prio=(e.kind==='examen'?LV[e.level||'normal'].m*3:2.5)/Math.max(1,d)*(p.late?1.3:1)*rk,
+      av=rk>=1.15?subjAvg(e.subj):null;
     for(let j=0;j<nb;j++){
       const ti=(Math.floor(frac*T)+j)%T,tl=tps?tps[ti]:(T>1?`Tema ${ti+1} de ${T}`:'');
       const task=ph<0?'Avanzar y terminar: '+e.title:list[Math.min(3,ph+(ph<2?j%2:0))];
       blocks.push({key:`${day}|${e.id}|${j}`,subj:e.subj,min:Math.max(15,Math.round(q/nb/5)*5),eventId:e.id,task,prio,
-        info:[tl,`${e.kind==='examen'?'Examen':'Entrega'} ${inDays(d)}`].filter(Boolean).join(' · ')})}}
+        info:[tl,`${e.kind==='examen'?'Examen':'Entrega'} ${inDays(d)}`,av!=null?`tu media aquí es ${fmtAvg(av)}`:''].filter(Boolean).join(' · ')})}}
   // El mismo día del examen: solo un repaso corto antes de hacerlo (mientras no haya pasado)
   for(const e of S.events.filter(e=>avail&&e.kind==='examen'&&e.grade==null&&e.date===day&&!(day===t&&examOver(e))))
     blocks.push({key:`${day}|${e.id}|hoy`,subj:e.subj,min:15,eventId:e.id,task:'Repaso rápido antes del examen: esquema y fórmulas clave',prio:99,info:'Examen hoy · sin agobios, solo refrescar'});
@@ -1051,7 +1057,7 @@ function planFor(day){
   if(free>=20){
     // Primero se repasa lo que has dado ese día en clase
     const busy=new Set(blocks.map(b=>b.subj)),m=minsBy(addDays(day,-10),addDays(day,-1)),cls=new Set(classesOn(day));
-    const pool=SUBJ().map((s,i)=>({id:s.id,k:(cls.has(s.id)?-1e6:0)+(m[s.id]||0)*10+((i+dn)%SUBJ().length)})).filter(o=>!busy.has(o.id)).sort((a,b)=>a.k-b.k);
+    const pool=SUBJ().map((s,i)=>({id:s.id,k:(cls.has(s.id)?-1e6:0)+(m[s.id]||0)*10-(gradeRisk(s.id)-1)*400+((i+dn)%SUBJ().length)})).filter(o=>!busy.has(o.id)).sort((a,b)=>a.k-b.k);
     const n=Math.min(pool.length,free>=70?2:1);
     for(let i=0;i<n;i++){const c=cls.has(pool[i].id);blocks.push({key:`${day}|r-${pool[i].id}`,subj:pool[i].id,min:Math.min(45,Math.round(free/n/5)*5),eventId:null,
       task:(c?'Repasar lo de hoy en clase: ':'Repaso espaciado: ')+REV[(dn+i)%3],info:c?'Lo has dado hoy en clase':'Mantener fresco lo ya visto'})}}
@@ -1407,7 +1413,7 @@ function vPlan(){
   o+=`<h2>Estudiado esta semana</h2><div class="card tight"><div class="between"><span class="mut">Total</span><b>${fmtMin(tot)}</b></div>
    ${studied.length?studied.sort((a,b)=>m[b.id]-m[a.id]).map(s=>`<div style="margin:10px 0"><div class="between small"><span>${h(s.name)}</span><span class="mut">${fmtMin(m[s.id])}</span></div><div class="bar" style="margin-top:5px"><i style="width:${m[s.id]/mx2*100}%;background:${col(s)}"></i></div></div>`).join('')
      :'<div class="mut small" style="margin-top:8px">Aún no has registrado estudio esta semana. Usa ▶ en un bloque para cronometrarlo.</div>'}</div>
-   <details class="how"><summary>¿Cómo se calcula el plan? ${ic('right','s')}</summary><div class="note" style="margin-top:6px">Cada examen tiene una carga = temas × horas por tema de esa materia × dificultad (ligero ×0,6, normal ×1, fuerte ×1,4, global ×2). Por ejemplo, Historia de España con 4 temas y "fuerte" son unas 17 h. Esas horas se reparten desde el día en que toca empezar (hasta 4 semanas antes) hasta la víspera, y si vas atrasado lo que falta se recalcula cada día. Lejos del examen toca esquema y teoría, a una semana ejercicios, a 2–3 días simulacro y la víspera repaso. El tiempo libre que sobra se usa para repasos.</div></details>`;
+   <details class="how"><summary>¿Cómo se calcula el plan? ${ic('right','s')}</summary><div class="note" style="margin-top:6px">Cada examen tiene una carga = temas × horas por tema de esa materia × dificultad (ligero ×0,6, normal ×1, fuerte ×1,4, global ×2). Por ejemplo, Historia de España con 4 temas y "fuerte" son unas 17 h. Esas horas se reparten desde el día en que toca empezar (hasta 4 semanas antes) hasta la víspera, y si vas atrasado lo que falta se recalcula cada día. Lejos del examen toca esquema y teoría, a una semana ejercicios, a 2–3 días simulacro y la víspera repaso. El tiempo libre que sobra se usa para repasos.<br><br>El orden de cada día depende de lo cerca que esté el examen, de lo fuerte que sea, de si vas atrasado y de tu media en esa materia: si vas flojo (o por debajo de tu objetivo) sube en la lista, y si vas muy bien baja un poco.</div></details>`;
   return o}
 
 function openAvail(){
