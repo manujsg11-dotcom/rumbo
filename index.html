@@ -203,8 +203,9 @@ svg.chart{width:100%;height:auto;display:block;overflow:visible}
 .chart .pt.sel circle:last-of-type{stroke:var(--tx)}
 .ctip{margin-top:8px;min-height:18px}
 /* Selector de estilo (Ajustes) */
-.themes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.themes button{border:1.5px solid var(--line);background:none;border-radius:14px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:650;cursor:pointer;color:var(--tx)}
+/* De 3 en 3; si la última fila no se llena, queda centrada */
+.themes{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.themes button{flex:0 0 calc((100% - 16px)/3);min-width:0;border:1.5px solid var(--line);background:none;border-radius:14px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:650;cursor:pointer;color:var(--tx)}
 .themes button.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .tsw{width:46px;height:30px;border-radius:8px;display:flex;align-items:flex-end;gap:3px;padding:5px;border:1px solid rgba(128,128,128,.35)}
 .tsw i{flex:1;height:10px;border-radius:3px}
@@ -644,6 +645,69 @@ nav.tab{background:rgba(255,250,243,.94);border-top:1px solid var(--line)}
 .toast{background:var(--acc);color:#fff8ee;border:0;border-radius:999px}
 .chart .gl{stroke:#eadcc8}.chart .vl{fill:var(--tx)}
 </style>
+<style data-tema="rosa" media="not all">
+.chip{white-space:nowrap}
+/* ROSA PASTEL: hermano del Pastel en rosa empolvado; tarjetas casi blancas, botones frambuesa,
+   letra redondeada (Nunito) y manchas de rubor muy suaves en el fondo */
+:root{color-scheme:light;--bg:#fbeef1;--card:#fffafb;--card2:#f8e1e7;--line:#f1d3db;--tx:#4a2a35;--mut:#7d5464;--dim:#b98d9c;--acc:#b04a6e;--acc2:#a03e62;--ok:#5f9474;--warn:#d98552;--bad:#c24a5a;--r:26px;
+  --track:#f6dde4;--bar2:#e8b4c4;--free:#f1d3db;--logo-bg:#b04a6e;--logo-fg:#fff5f8;--logo-fg2:#f3bfd0;
+  --ui:"Nunito",-apple-system,BlinkMacSystemFont,sans-serif;--num:"Nunito",var(--ui)}
+html,body{background:#fbeef1}
+body{font-size:15px}
+/* Fondo: rubor muy suave arriba a la izquierda y abajo a la derecha */
+.deco{display:block;position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(60vmax 45vmax at 0% 0%,rgba(255,196,214,.55),transparent 70%),radial-gradient(55vmax 45vmax at 100% 100%,rgba(255,214,200,.45),transparent 70%),radial-gradient(40vmax 30vmax at 100% 20%,rgba(236,200,240,.3),transparent 70%)}
+.wrap{position:relative;z-index:1}
+.chip{background:var(--card);border-color:var(--line);font-weight:700;color:var(--acc)}
+.ring span{color:var(--acc);font-weight:800}
+.streak{color:var(--mut)}.streak.hot{color:#b25537}
+.warnc{color:#95602a}
+.card{border:0;box-shadow:0 2px 16px rgba(176,74,110,.08)}
+h2{font-weight:800;font-size:20px;color:var(--tx)}
+.eyebrow{color:var(--acc2);font-weight:700;letter-spacing:.07em}
+.big{font-weight:800;font-size:24px;color:var(--tx)}
+.num{font-weight:700;letter-spacing:-.02em}
+.course .num.xl{font-size:62px}.course .num.lg{font-size:38px}.trio .num{font-size:30px}.scard .num{font-size:28px}
+.btn{background:var(--acc);color:#fff5f8;border-radius:999px;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(176,74,110,.22)}
+.btn.ghost{background:var(--card2);color:var(--tx);box-shadow:none}
+.btn.danger{background:#fbd9de;color:#a8364f;box-shadow:none}
+.btn.sm{border-radius:999px}.btn.icon{border-radius:50%}
+.btn:disabled{box-shadow:none}
+.link{color:var(--acc);font-weight:700}
+.circ{border-color:var(--line);color:var(--acc);background:var(--card)}
+.navb{color:var(--acc2)}
+nav.tab{background:rgba(255,250,251,.92);border-top:1px solid var(--line)}
+.tb{color:#a5788a}.tb.on{background:var(--card2);border-color:transparent;color:var(--tx)}.tb.on svg{color:var(--acc)}
+.fab{background:var(--acc);color:#fff5f8;box-shadow:0 6px 18px rgba(176,74,110,.32)}
+.pill{background:var(--card2);color:var(--acc2)}
+.pill.hot{background:#fbd9de;color:#a8364f}.pill.warm{background:#f8e6cf;color:#95602a}.pill.blue{background:#f6dbe4;color:var(--acc)}
+.warnbox{background:#fbeedd;border-color:#efd3b0;color:#8a5a22}
+.seg{background:var(--card2);border:0;border-radius:999px}
+.seg button{border-radius:999px;color:var(--mut)}.seg button.on{background:var(--acc);color:#fff5f8}
+.day{border-radius:16px}.day.today{border-color:var(--acc);color:var(--acc)}.day.sel{background:var(--card2)}
+.inp{background:#fff;border-color:var(--line);border-radius:16px}
+.wkd{background:var(--card2);border-radius:18px}.wkd .mut{color:#6e4252}.wkd.on{background:#f4c9d6;border-color:var(--acc)}
+.wkbar{background:#fff5f8}.wkbar .pl{background:var(--acc)}
+.freebar{background:var(--card2);border-radius:18px}
+.stat,.res{background:var(--card2)}
+.note{background:var(--card2);border:0;color:var(--acc2)}
+.est{background:#fbe4ea;border-color:#f2c9d5}.est b{color:var(--acc)}
+.swk i{background:var(--card2)}.swk i.on{background:#f4c9d6;color:var(--acc)}.swk i.td{box-shadow:0 0 0 2px var(--acc)}.swk i.fut{border-color:var(--line)}
+.flame{background:var(--card2);color:var(--mut)}.flame.on{background:#fde3d6;color:#b25537}
+.check{border-color:var(--dim)}.check.on{background:var(--acc);border-color:var(--acc)}
+.chips button{border-color:var(--line);color:var(--mut);background:var(--card)}.chips button.on{background:#f8dde5;border-color:var(--acc);color:var(--tx)}
+.letter{border-radius:14px;color:#3a1f2a!important}
+.scard{background:var(--card);border:0;box-shadow:0 2px 16px rgba(176,74,110,.08);border-radius:24px}
+.avatar{background:var(--card2);border:0;color:var(--acc)}
+.bdg div{background:var(--card2)}
+.qa button{background:var(--card);border:1px solid var(--line);border-radius:22px}
+.sheet{background:#fffafb;border:0;border-radius:30px 30px 0 0}
+.ov{background:rgba(90,40,60,.32)}
+.grab{background:var(--dim)}
+.toast{background:var(--acc);color:#fff5f8;border:0;border-radius:999px}
+.chart .gl{stroke:#f1d3db}.chart .vl{fill:var(--tx)}
+.range::-webkit-slider-thumb{box-shadow:0 2px 8px rgba(176,74,110,.35)}
+</style>
 <style data-tema="cristal" media="not all">
 .chip{white-space:nowrap}
 /* CRISTAL: paneles de cristal esmerilado sobre un fondo de manchas de color difuminadas (estilo glassmorphism) */
@@ -936,6 +1000,8 @@ const TH={
     subj:{fis:'#f9c98a',hes:'#8fd8d2',fil:'#c9b6f2',len:'#a8e6a1',mat:'#f4a988',tec:'#dfe98f',ing:'#f2a6e6'}},
   pastel:{n:'Pastel',bg:'#f3ebe0',sw:['#f3ebe0','#fffaf3','#6b4c3b'],pau:['☕ ',' d'],f:'Poppins:wght@400;500;600;700',
     subj:{fis:'#c9a27e',hes:'#8fb8b0',fil:'#b7a3d1',len:'#9cbf8f',mat:'#d4a78a',tec:'#b9c48a',ing:'#d7a1c4'}},
+  rosa:{n:'Rosa pastel',bg:'#fbeef1',sw:['#fbeef1','#fffafb','#b04a6e'],pau:['🌸 ',' d'],f:'Nunito:wght@400;600;700;800',
+    subj:{fis:'#eaa07e',hes:'#82bbb3',fil:'#b8a1de',len:'#93c49b',mat:'#ef8fa8',tec:'#c8cb80',ing:'#d99ad2'}},
   cristal:{n:'Cristal',bg:'#0e0c1d',sw:['linear-gradient(135deg,#5a3fe0,#e0408f)','rgba(255,255,255,.3)','#fff'],pau:['✦ ',' d'],f:'Inter:wght@300;400;500;600;700',
     subj:{fis:'#ffc48a',hes:'#7fe7dc',fil:'#c3a6ff',len:'#9df29b',mat:'#ff9f8a',tec:'#e4f58a',ing:'#ff9ee8'}}};
 let themeOn=null;
