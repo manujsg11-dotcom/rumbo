@@ -1272,7 +1272,7 @@ function devInfo(){const u=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(u)||(
 let instPrompt=null,instDone=false;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();instPrompt=e;if(needInstall())render()});
 addEventListener('appinstalled',()=>{instDone=true;instPrompt=null;if(needInstall())render()});
-function needInstall(){if(!IS_WEB||S.setup||isStandalone())return false;try{if(localStorage.getItem(KEY+'.noinst'))return false}catch(e){}return !!devInfo().os}
+function needInstall(){return IS_WEB&&!S.setup&&!isStandalone()&&!!devInfo().os}
 const ISV={share:'<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11v9h12v-9"/>',add:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
   dotsV:'<path d="M12 5h.01M12 12h.01M12 19h.01" stroke-width="3.2"/>',dotsH:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>'};
 const kb=(t,i)=>`<span class="k">${i?`<svg viewBox="0 0 24 24">${ISV[i]}</svg>`:''}${t}</span>`;
@@ -1302,7 +1302,7 @@ function vInst(){
     ${instPrompt?`<button class="btn" style="margin-top:18px" data-act="instGo">${ic('plus')} Instalar Rumbo</button><div class="mut small" style="margin-top:12px">¿No te funciona el botón? Hazlo a mano:</div>`:''}
     ${S3}
     <div class="note ithen">Cuando veas el icono en tu pantalla de inicio, <b style="color:var(--tx)">cierra esta página y abre Rumbo desde el icono</b>. Allí te haré las preguntas para preparar tu plan.${ios?' Lo que hagas aquí, en el navegador, no pasa a la app del icono.':''}</div>
-    <button class="link" style="color:var(--mut);margin:18px 0 30px" data-act="instSkip">Prefiero usarla en el navegador</button></div>`}
+    <div style="height:30px"></div></div>`}
 function vOnb(){
   const st=OB.step,N=5,dots=`<div class="obdots">${[...Array(N)].map((_,i)=>`<i class="${i<=st?'on':''} ${i===st?'now':''}"></i>`).join('')}</div>`;
   const nav=(ok,label='Siguiente')=>`<div class="obnav">${st?`<button class="btn ghost" data-act="obGo" data-s="${st-1}">Atrás</button>`:''}
@@ -2097,9 +2097,7 @@ const A={
   addTime:()=>{ADD=null;openAdd()},
   // Pantalla de instalar (versión web)
   instGo:async()=>{const p=instPrompt;if(!p)return;try{p.prompt();const r=await p.userChoice;if(r.outcome==='accepted'){instDone=true;instPrompt=null;render()}}catch(e){}},
-  instCopy:async()=>{const u=location.href.split('#')[0];try{await navigator.clipboard.writeText(u);toast('Enlace copiado')}catch(e){toast(u)}},
-  instSkip:()=>{try{localStorage.setItem(KEY+'.noinst','1')}catch(e){}render()},
-  addSubj:d=>{if(ADD.subj===d.s)return;ADD.subj=d.s;ADD.ev=subjEvs(d.s)[0]?.id||'';openAdd()},
+  instCopy:async()=>{const u=location.href.split('#')[0];try{await navigator.clipboard.writeText(u);toast('Enlace copiado')}catch(e){toast(u)}},  addSubj:d=>{if(ADD.subj===d.s)return;ADD.subj=d.s;ADD.ev=subjEvs(d.s)[0]?.id||'';openAdd()},
   addDay:d=>{const v=$('#addDate');if(v)ADD.date=v.value||ADD.date;if(ADD.day===+d.i)return;ADD.day=+d.i;openAdd()},
   addEv:d=>{if(ADD.ev===d.id)return;ADD.ev=d.id;openAdd()},
   addSave:()=>{const a=ADD,t=today(),date=a.day===0?t:a.day===1?addDays(t,-1):($('#addDate')?.value||a.date);
