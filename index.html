@@ -1935,10 +1935,30 @@ const tGoalsHtml=T=>(T.goals||[]).map((g,i)=>`<div class="item tgoal"><button cl
 // No se para si quedan menos de 10 min.
 const POMO={get work(){return S.pomoW||25},get rest(){return S.pomoR||5}},POMO_LIM={w:[10,120],r:[5,30]};
 function pomoTick(){const T=S.timer;if(!T)return;
-  if(T.brk){if(Date.now()>=T.brk){T.brk=null;T.paused=false;T.start=Date.now();save();toast('¡Fin del descanso! A seguir');try{navigator.vibrate?.([120,80,120])}catch(e){}}return}
+  if(T.brk){if(Date.now()>=T.brk){T.brk=null;T.paused=false;T.start=Date.now();save();toast('¡Fin del descanso! A seguir');chime('back')}return}
   if(!T.pomo||T.paused)return;
   const e=elapsed()/60000,n=Math.floor(e/POMO.work);
-  if(n>(T.brks||0)){T.brks=n;if(T.min-e>=10){T.acc+=Date.now()-T.start;T.paused=true;T.brkLen=POMO.rest;T.brk=Date.now()+POMO.rest*60000;save();try{navigator.vibrate?.(200)}catch(e){}}}}
+  if(n>(T.brks||0)){T.brks=n;if(T.min-e>=10){T.acc+=Date.now()-T.start;T.paused=true;T.brkLen=POMO.rest;T.brk=Date.now()+POMO.rest*60000;save();chime('brk');if(!$('#tt'))toast(`Descanso de ${POMO.rest} min`)}}}
+// Sonidos del temporizador, hechos con Web Audio (sin archivos): notas suaves tipo marimba.
+// El navegador solo deja sonar si antes ha habido un toque, así que audioUnlock() se llama al tocar.
+// En el iPhone respeta el modo silencio (y allí no hay vibración).
+let actx=null;
+function audioUnlock(){try{if(!actx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;actx=new AC();
+    const b=actx.createBuffer(1,1,22050),s=actx.createBufferSource();s.buffer=b;s.connect(actx.destination);s.start(0)}
+  if(actx.state==='suspended')actx.resume()}catch(e){}}
+function chime(k){
+  try{navigator.vibrate?.(k==='end'?[200,100,200,100,300]:k==='brk'?200:[120,80,120])}catch(e){}
+  if(!actx)return;try{if(actx.state==='suspended')actx.resume();
+    const N={end:[[1047,0],[1319,.16],[1568,.32],[2093,.5]],brk:[[784,0],[523,.2]],back:[[523,0],[784,.18]]}[k],t0=actx.currentTime+.05;
+    for(const[f,d]of N)for(const[m,v]of[[1,.22],[2,.05]]){const o=actx.createOscillator(),g=actx.createGain(),t=t0+d,len=k==='end'&&d>=.5?1.6:.9;
+      o.type='sine';o.frequency.value=f*m;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+len);
+      o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+len+.05)}}catch(e){}}
+// Vigila el temporizador aunque su hoja esté cerrada: descansos y aviso de «tiempo cumplido» (una sola vez)
+function timerWatch(){const T=S.timer;if(!T)return;pomoTick();if(!S.timer||T.brk||T.rang)return;
+  const over=elapsed()-T.min*60000;if(over<0)return;
+  T.rang=1;save();if(over<90000){chime('end');if(!$('#tt'))toast('¡Tiempo cumplido! Vuelve al temporizador para terminar')}}
+setInterval(timerWatch,1000);
+for(const ev of['pointerdown','touchend','keydown'])document.addEventListener(ev,audioUnlock,true);
 function openTimer(){
   const T=S.timer,s=sb(T.subj),R=110,C=2*Math.PI*R;
   sheet(`<div class="meta" style="justify-content:center;margin-top:0"><span class="dot" style="background:${col(s)}"></span>${h(s.name)} · ${T.min} min</div>
