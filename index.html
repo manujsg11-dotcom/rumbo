@@ -2091,6 +2091,14 @@ function openTimer(){
   try{navigator.wakeLock?.request('screen').then(w=>{wake=w}).catch(()=>{})}catch(e){}}
 function markDone(day,key){const arr=S.planDone[day]=S.planDone[day]||[];if(!arr.includes(key))arr.push(key);
   if(day===today()){const bl=planFor(day).blocks;if(bl.length&&bl.every(b=>arr.includes(b.key))&&!S.perfect[day]){S.perfect[day]=1;setTimeout(()=>toast('Día perfecto: has completado todo el plan'),2800)}}}
+// Al desmarcar un bloque se deshace lo que sumó al marcarlo: su último apunte de estudio y su XP (minutos + 15).
+// Si no hay esa XP, el bloque se marcó de otra forma (sesión libre o tiempo añadido) y ese tiempo se queda.
+// Se apunta en S.del para que la sincronización no lo devuelva. Devuelve la XP quitada.
+function undoBlock(k){const l=[...S.log].reverse().find(x=>x.key===k);if(!l)return 0;
+  const v=l.min+15,xs=[...S.xpLog].reverse(),x=xs.find(y=>y.v===v&&y.d===l.date)||xs.find(y=>y.v===v);if(!x)return 0;
+  S.log=S.log.filter(y=>y!==l);tomb('log:'+logKey(l));
+  S.xpLog=S.xpLog.filter(y=>y!==x);tomb('xp:'+x.id);
+  return v}
 function finishTimer(){
   const T=S.timer,m=Math.max(1,Math.round(elapsed()/60000));
   S.log.push({id:uid(),date:today(),subj:T.subj,min:m,eventId:T.eventId,key:T.key});
@@ -2108,7 +2116,7 @@ const A={
   calsel:d=>{if(cal.sel===d.d)return;cal.sel=d.d;FX.day=1;render()},
   start:d=>{const b=planFor(today()).blocks.find(x=>x.key===d.k);if(b)startTimer(b)},
   tick:d=>{const arr=S.planDone[d.d]=S.planDone[d.d]||[],i=arr.indexOf(d.k);
-    if(i>=0){arr.splice(i,1);save();render();return}
+    if(i>=0){arr.splice(i,1);delete S.perfect[d.d];const v=undoBlock(d.k);save();render();if(v)toast(`−${v} XP · bloque desmarcado`);return}
     FX.tick=d.k;
     const b=planFor(d.d).blocks.find(x=>x.key===d.k);markDone(d.d,d.k);
     if(b&&d.d<=today()){S.log.push({id:uid(),date:today(),subj:b.subj,min:b.min,eventId:b.eventId,key:b.key});addXP(b.min+15,'bloque completado')}else save();render()},
