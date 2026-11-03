@@ -1028,10 +1028,11 @@ let tab='inicio';try{tab=localStorage.getItem(KEY+'.tab')||'inicio'}catch(e){}
 let cal={mode:'week',ref:today(),sel:today()};
 
 /* ====== Sincronización entre dispositivos (db de la página) ====== */
-let dbRef=null,assetsNS=null,syncState='local',pushT=null,writing=Promise.resolve();
+// synced: hasta recibir lo que hay en la nube no se sube nada, para que un dispositivo con datos viejos no la pise
+let dbRef=null,assetsNS=null,syncState='local',pushT=null,writing=Promise.resolve(),synced=false;
 function save(){S.updatedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
   if(dbRef){clearTimeout(pushT);pushT=setTimeout(push,700)}}
-function push(){if(!dbRef)return;const body={json:JSON.stringify(S),updatedAt:S.updatedAt||Date.now()};
+function push(){if(!dbRef||!synced)return;const body={json:JSON.stringify(S),updatedAt:S.updatedAt||Date.now()};
   writing=writing.then(()=>dbRef.set(body)).then(()=>{syncState='ok'}).catch(e=>{syncState='err';
     if(e&&e.code==='invalid_argument'){dbRef=null;syncState='local'}})}
 // Une lo de dos dispositivos: las listas (exámenes, notas, estudio, XP, apuntes…) se suman por id,
@@ -1068,6 +1069,7 @@ async function initSync(){
     dbRef=db.doc('data/users/'+id+'/state');
     dbRef.onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
+      synced=true;
       if(!snap.exists){push();setSyncReady();return}
       const d=snap.data();syncState='ok';
       if((d.updatedAt||0)===(S.updatedAt||0))return setSyncReady();
