@@ -1278,7 +1278,7 @@ function vTop(){
   <div class="ring" data-act="progress" title="Nivel ${L.n} · ${L.x}/${L.need} XP"><svg width="44" height="44"><circle cx="22" cy="22" r="18" stroke="var(--track)" stroke-width="3.5" fill="none"/><circle cx="22" cy="22" r="18" stroke="var(--acc)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-p)}"/></svg><span>${L.n}</span></div>`}
 
 /* ====== Cuestionario inicial (la primera vez que alguien abre la app) ====== */
-let OB={step:0,name:'',etapa:'bach',curso:2,media1:'',mod:null,troncal:null,picks:new Set(),extra:[],wd:90,we:60};
+let OB={step:0,name:'',etapa:'bach',curso:2,media1:'',mod:null,troncal:null,picks:new Set(),extra:[],wd:120,we:90};
 // Al cambiar de curso o modalidad se marcan las comunes y la primera troncal posible (en la ESO, sus comunes)
 function obReset(){if(OB.etapa==='eso'){OB.picks=new Set(ESO[OB.curso].com);OB.troncal=null;OB.mod=null;return}
   const M=MODS[OB.mod];OB.picks=new Set(COMMON[OB.curso]);OB.troncal=null;
@@ -1287,6 +1287,10 @@ function obReset(){if(OB.etapa==='eso'){OB.picks=new Set(ESO[OB.curso].com);OB.t
 function obSync(){const n=$('#onbName');if(n)OB.name=n.value.trim();const m=$('#onbM1');if(m)OB.media1=m.value}
 const inCurso=id=>!CAT[id].c||CAT[id].c===OB.curso;
 const obCount=()=>OB.picks.size+OB.extra.length;
+// Tiempo de estudio recomendado por curso (entre semana, fin de semana y a partir de cuánto ya no ayuda).
+// Se basa en Cooper, Robinson y Patall (2006): en la ESO rinde hasta ~1 h al día (Fernández-Alonso et al.,
+// 2015, con alumnos españoles de 2º de ESO) y en Bachillerato sube hasta 1 h 30 – 2 h 30, sin pasar de ahí.
+const obRec=()=>OB.etapa==='eso'?(OB.curso<=2?{wd:60,we:30,max:90}:{wd:90,we:45,max:120}):(OB.curso===1?{wd:90,we:60,max:150}:{wd:120,we:90,max:150});
 
 /* ====== Instalar la app (solo versión web) ======
    Quien la abre por primera vez en el móvil desde el navegador ve antes del cuestionario cómo añadirla a la
@@ -1335,7 +1339,7 @@ function vInst(){
     <div style="height:30px"></div></div>`}
 function vOnb(){
   // En la ESO se salta el paso de la modalidad, así que hay un punto menos
-  const st=OB.step,N=5,eso=OB.etapa==='eso',vs=eso&&st>2?st-1:st,dots=`<div class="obdots">${[...Array(eso?4:5)].map((_,i)=>`<i class="${i<=vs?'on':''} ${i===vs?'now':''}"></i>`).join('')}</div>`;
+  const st=OB.step,N=6,eso=OB.etapa==='eso',vs=eso&&st>2?st-1:st,dots=`<div class="obdots">${[...Array(eso?N-1:N)].map((_,i)=>`<i class="${i<=vs?'on':''} ${i===vs?'now':''}"></i>`).join('')}</div>`;
   const nav=(ok,label='Siguiente')=>`<div class="obnav">${st?`<button class="btn ghost" data-act="obGo" data-s="${st-1}">Atrás</button>`:''}
     <button class="btn" data-act="${st===N-1?'obDone':'obGo'}" data-s="${st+1}" ${ok?'':'disabled'}>${label}</button></div>`;
   const chip=(id,on,act,extra='')=>`<button class="${on?'on':''}" data-act="${act}" data-id="${id}" ${extra}>${on?ic('check','s'):''}${h(catName(id,OB.curso))}</button>`;
@@ -1374,11 +1378,16 @@ function vOnb(){
     <div class="row" style="margin-top:10px"><input class="inp" id="onbExtra" placeholder="Otra optativa, p. ej. Comentario de texto" ${full?'disabled':''}><button class="btn icon" data-act="obAdd" aria-label="Añadir optativa" ${full?'disabled':''}>${ic('plus')}</button></div>
     <div class="mut small" style="margin-top:8px">${obCount()} de ${MAX_SUBJ} como máximo</div>
     ${nav(!!OB.troncal&&obCount()>=3)}`}
+  else if(st===5)o+=`<div class="big">Elige tu estilo</div><div class="mut">Toca uno para probarlo. Puedes cambiarlo cuando quieras en Perfil → Ajustes.</div>
+    <div class="themes" style="margin-top:18px">${Object.entries(TH).map(([k,t])=>`<button class="${k===(S.theme||'original')?'on':''}" data-act="obTheme" data-k="${k}" aria-label="Estilo ${t.n}">
+     <span class="tsw" style="background:${t.sw[0]}"><i style="background:${t.sw[1]}"></i><i style="background:${t.sw[2]}"></i></span>${t.n}</button>`).join('')}</div>
+    ${nav(true,'Listo, empezar')}`;
   else{const ch=(k,v,arr)=>`<div class="chips">${arr.map(n=>`<button class="${OB[k]===n?'on':''}" data-act="obTime" data-k="${k}" data-n="${n}">${n?fmtMin(n):'Nada'}</button>`).join('')}</div>`;
     o+=`<div class="big">¿Cuánto puedes estudiar?</div><div class="mut">Con esto reparto el estudio de cada examen. Luego puedes ajustar cada día por separado en la pestaña Plan.</div>
     <label class="f">De lunes a viernes, cada día</label>${ch('wd',OB.wd,eso?[30,45,60,90,120]:[30,60,90,120,150,180])}
     <label class="f">Sábados y domingos, cada día</label>${ch('we',OB.we,eso?[0,30,45,60,90]:[0,30,60,90,120,180])}
-    ${nav(true,'Listo, empezar')}`}
+    <div class="note">${ic('star','s')} Para ${OB.curso}º de ${eso?'ESO':'Bachillerato'} lo recomendable es unos <b style="color:var(--tx)">${fmtMin(obRec().wd)} al día</b> entre semana. Más de ${fmtMin(obRec().max)} ya apenas mejora las notas y te quita descanso.</div>
+    ${nav(true)}`}
   return o+'</div>'}
 function obFinish(){
   const c=OB.curso,eso=OB.etapa==='eso',ids=[...OB.picks].filter(id=>CAT[id]);
@@ -2186,10 +2195,10 @@ const A={
     // En la ESO no hay modalidad: del curso se pasa directo a las asignaturas (y al volver, igual)
     let s=+d.s;if(eso&&s===2)s=OB.step===1?3:1;
     if(s===3&&!OB.picks.size)obReset();OB.step=s;render();scrollTo(0,0)},
-  obCurso:d=>{obSync();const et=d.c[0]==='e'?'eso':'bach',c=+d.c.slice(1),cambia=et!==OB.etapa;
+  obCurso:d=>{obSync();const et=d.c[0]==='e'?'eso':'bach',c=+d.c.slice(1);
     OB.etapa=et;OB.curso=c;
-    // Tiempo libre propuesto según la etapa (si no lo ha tocado todavía)
-    if(cambia&&!OB.timeSet){OB.wd=et==='eso'?60:90;OB.we=et==='eso'?30:60}
+    // Tiempo libre propuesto según el curso (si no lo ha tocado todavía)
+    if(!OB.timeSet){const R=obRec();OB.wd=R.wd;OB.we=R.we}
     if(et==='eso'||OB.mod)obReset();else OB.picks=new Set();render()},
   obMod:d=>{obSync();if(OB.mod!==d.m){OB.mod=d.m;obReset()}render()},
   obTr:d=>{if(OB.troncal)OB.picks.delete(OB.troncal);OB.troncal=d.id;OB.picks.add(d.id);render()},
@@ -2197,6 +2206,8 @@ const A={
   obAdd:()=>{const v=$('#onbExtra').value.trim();if(!v||obCount()>=MAX_SUBJ)return;if(!OB.extra.includes(v))OB.extra.push(v);render();setTimeout(()=>$('#onbExtra')?.focus(),30)},
   obDelX:d=>{OB.extra.splice(+d.i,1);render()},
   obTime:d=>{OB[d.k]=+d.n;OB.timeSet=1;render()},
+  // El estilo se prueba en el momento; se guarda al terminar el cuestionario
+  obTheme:d=>{if(S.theme===d.k)return;S.theme=d.k;render()},
   obDone:()=>obFinish(),
   guideHide:()=>{S.intro.steps=1;save();render()},
   guideSched:()=>{schedEd=1;openSched()},
