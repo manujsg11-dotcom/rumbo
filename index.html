@@ -223,6 +223,7 @@ body.onbm nav.tab{display:none}
 .obdots{display:flex;gap:6px;margin:4px 0 6px}.obdots i{flex:1;height:4px;border-radius:4px;background:var(--line)}.obdots i.on{background:var(--acc)}
 .opt{display:block;width:100%;text-align:left;padding:14px 16px;border:1.5px solid var(--line);border-radius:16px;background:var(--card);color:var(--tx);margin-top:10px;cursor:pointer;font:inherit}
 .opt.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}.opt b{display:block;font-size:16.5px;margin-bottom:3px}.opt span{color:var(--mut);font-size:13.5px;line-height:1.35}
+.optg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.optg .opt{margin-top:0}
 .obnav{display:flex;gap:10px;margin:26px 0 30px}.obnav .btn.ghost{width:auto;padding:0 20px}
 .btn:disabled,.chips button:disabled{opacity:.4;cursor:default}
 .onb .chips button svg{margin-left:-3px}
@@ -895,7 +896,11 @@ nav.tab{background:rgba(22,18,40,.42);border-top:1px solid rgba(255,255,255,.12)
 /* ====== Datos base ====== */
 const PALETTE=['#2f7cf6','#d9534f','#e08a2e','#1a8a8a','#7a62c0','#b33fd0','#5f8a1a','#9a7b55'];
 // Horas de estudio por tema según la materia (con dificultad normal)
-const HPT={hes:3,fil:2.5,len:2,mat:3,fis:3,tec:2.5,ing:1.5};
+const HPT={hes:3,fil:2.5,len:2,mat:3,fis:3,tec:2.5,ing:1.5,
+  // ESO: bastante menos por tema que en Bachillerato
+  emat:1.5,efq:1.5,egh:1.5,ebg:1.25,elen:1.25,eing:1};
+// Lo que se usa si la materia no está en HPT (ni se parece a ninguna)
+const hptDef=()=>S.etapa==='eso'?1:2.5;
 const LV={ligero:{l:'Ligero',m:.6,d:'control corto'},normal:{l:'Normal',m:1,d:'examen de tema'},fuerte:{l:'Fuerte',m:1.4,d:'mucho contenido'},global:{l:'Global',m:2,d:'evaluación / final'}};
 // Tareas por materia según la fase: lejos, a una semana, a 2-3 días, víspera
 const TASKS={
@@ -905,7 +910,15 @@ const TASKS={
   mat:['Teoría y ejemplos resueltos','Batería de problemas tipo PAU','Simulacro de examen cronometrado','Repaso final: fórmulas y errores típicos'],
   fis:['Teoría, deducciones y unidades','Problemas tipo PAU','Simulacro de examen cronometrado','Repaso final: fórmulas y casos típicos'],
   tec:['Teoría y conceptos clave','Problemas de cálculo tipo examen','Simulacro de examen cronometrado','Repaso final: fórmulas y esquemas'],
-  ing:['Vocabulario y gramática','Reading + preguntas de comprensión','Writing cronometrado (150-200 palabras)','Repaso final: connectors y errores típicos'],  _:['Leer, subrayar y hacer esquema','Ejercicios y preguntas tipo','Simulacro a tiempo real','Repaso final y dudas']};
+  ing:['Vocabulario y gramática','Reading + preguntas de comprensión','Writing cronometrado (150-200 palabras)','Repaso final: connectors y errores típicos'],  _:['Leer, subrayar y hacer esquema','Ejercicios y preguntas tipo','Simulacro a tiempo real','Repaso final y dudas'],
+  // ESO
+  emat:['Repasar la teoría y los ejemplos del libro','Hacer ejercicios del tema','Examen de prueba con ejercicios mezclados','Repaso final: fórmulas y dudas'],
+  efq:['Teoría, unidades y fórmulas','Problemas del tema','Examen de prueba','Repaso final: fórmulas y dudas'],
+  elen:['Leer el tema y hacer un esquema','Ejercicios de gramática y ortografía','Redacción o comentario de práctica','Repaso final: esquema y dudas'],
+  eing:['Vocabulario del tema','Gramática y ejercicios','Reading y writing cortos','Repaso final: vocabulario y verbos'],
+  egh:['Leer y subrayar el tema','Esquema o mapa conceptual','Responder preguntas de examen por escrito','Repaso final: fechas, mapas y conceptos'],
+  ebg:['Leer y subrayar el tema','Esquema con los dibujos clave','Responder preguntas de examen','Repaso final: conceptos y dibujos'],
+  _eso:['Leer y subrayar el tema','Hacer un esquema o resumen','Responder preguntas tipo examen','Repaso final y dudas']};
 const REV=['flashcards de lo último visto','resumen de memoria (active recall)','ejercicios mezclados de temas anteriores'];
 const MON=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MONL=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -929,8 +942,24 @@ const CAT={
   hmd:{n:'Historia de la Música y de la Danza',c:2,al:'hes'},ldr:{n:'Literatura Dramática',c:2,al:'len'},
   eeae:{n:'Economía, Emprendimiento y Actividad Empresarial',c:1},mca:{n:'Movimientos Culturales y Artísticos',c:2,al:'hes'},
   fra:{n:'Francés',r:1,al:'ing'},psi:{n:'Psicología'},tic:{n:'TIC / Programación',al:'tec'},rel:{n:'Religión'},
-  ana:{n:'Anatomía Aplicada',c:1},ccie:{n:'Cultura Científica',c:1},est:{n:'Estadística',c:2,al:'mat'},fag:{n:'Fundamentos de Administración y Gestión',c:2}};
+  ana:{n:'Anatomía Aplicada',c:1},ccie:{n:'Cultura Científica',c:1},est:{n:'Estadística',c:2,al:'mat'},fag:{n:'Fundamentos de Administración y Gestión',c:2},
+  // ESO (LOMLOE, Andalucía). eso: true para separarlas de las de Bachillerato
+  elen:{n:'Lengua Castellana y Literatura',eso:1},eing:{n:'Inglés',eso:1},emat:{n:'Matemáticas',eso:1},egh:{n:'Geografía e Historia',eso:1},
+  ebg:{n:'Biología y Geología',eso:1},efq:{n:'Física y Química',eso:1},eef:{n:'Educación Física',eso:1},emus:{n:'Música',eso:1},
+  epva:{n:'Educación Plástica, Visual y Audiovisual',eso:1},etyd:{n:'Tecnología y Digitalización',eso:1,al:'efq'},evce:{n:'Educación en Valores Cívicos y Éticos',eso:1},
+  ematA:{n:'Matemáticas A',eso:1,al:'emat'},ematB:{n:'Matemáticas B',eso:1,al:'emat'},elat:{n:'Latín',eso:1,al:'elen'},eeco:{n:'Economía y Emprendimiento',eso:1},
+  edig:{n:'Digitalización',eso:1},etec:{n:'Tecnología',eso:1,al:'efq'},eexa:{n:'Expresión Artística',eso:1},efopp:{n:'Formación y Orientación Personal y Profesional',eso:1},
+  efra:{n:'Francés',eso:1,al:'eing'},ecyr:{n:'Computación y Robótica',eso:1},ecc:{n:'Cultura Clásica',eso:1,al:'egh'},eod:{n:'Oratoria y Debate',eso:1},
+  epi:{n:'Proyecto Interdisciplinar',eso:1},erel:{n:'Religión',eso:1},efil:{n:'Filosofía',eso:1,al:'egh'},eccie:{n:'Cultura Científica',eso:1,al:'ebg'}};
 const catName=(id,c)=>CAT[id].n+(CAT[id].r?(c===1?' I':' II'):'');
+// ESO por curso: com = comunes (salen marcadas), opc = de opción (4º, eliges 3), opt = optativas
+const ESO={
+  1:{com:['elen','eing','emat','egh','ebg','eef','emus','epva'],opc:[],opt:['efra','ecyr','ecc','eod','epi','etyd','erel']},
+  2:{com:['elen','eing','emat','egh','efq','eef','emus','etyd'],opc:[],opt:['efra','ecyr','ecc','eod','epi','epva','erel']},
+  3:{com:['elen','eing','emat','egh','ebg','efq','eef','etyd','evce'],opc:[],opt:['efra','ecyr','ecc','eod','epva','emus','erel']},
+  4:{com:['elen','eing','egh','eef','ematB'],opc:['ebg','efq','elat','eeco','edig','etec','eexa','emus','efopp','efra'],opt:['ematA','efil','eccie','ecyr','erel']}};
+const isESO=()=>S.etapa==='eso';
+const cursoTxt=()=>`${S.curso||2}º de ${isESO()?'ESO':'Bachillerato'}`;
 const ALIAS=Object.fromEntries(Object.entries(CAT).filter(([,v])=>v.al).map(([k,v])=>[k,v.al]));
 // Por modalidad: t = la troncal (la que cuenta en la fase de acceso de la PAU), o = las de modalidad a elegir
 const MODS={
@@ -972,7 +1001,7 @@ const KEY='rumbo.v2';
 const gradeXP=(g,e)=>Math.round(g*10*(0.5+0.25*e))+(g>=9?30:0);
 // Una persona nueva empieza vacía y rellena el cuestionario (setup:false); sus asignaturas salen de ahí
 function defaults(){return{
-  setup:false,curso:2,mod:null,
+  setup:false,etapa:'bach',curso:2,mod:null,
   name:'',region:'Andalucía',theme:'original',
   subjects:[],events:[],
   log:[],planDone:{},perfect:{},xp:0,media1:null,media2Manual:null,pauDate:'2027-06-01',
@@ -1171,7 +1200,7 @@ function nextClass(subj,from){for(let i=1;i<=14;i++){const d=addDays(from,i);if(
 function needMin(e){
   if(e.hours!=null)return Math.round(e.hours*60);
   if(e.kind==='tarea')return 60;
-  const t=sb(e.subj).target,m=(e.temas||1)*(HPT[e.subj]||HPT[ALIAS[e.subj]]||2.5)*(LV[e.level||'normal'].m)*(t>=9?1.15:1);
+  const t=sb(e.subj).target,m=(e.temas||1)*(HPT[e.subj]||HPT[ALIAS[e.subj]]||hptDef())*(LV[e.level||'normal'].m)*(t>=9?1.15:1);
   return Math.round(m*60/15)*15}
 // Cuántos días antes hay que empezar
 function windowDays(e,n){return e.kind==='tarea'?Math.min(7,Math.max(2,Math.ceil(n/60)+1)):Math.min(28,Math.max(4,Math.ceil(n/110)+2))}
@@ -1215,7 +1244,7 @@ function planFor(day){
     q=Math.max(15,Math.round(q/5)*5);
     const nb=Math.ceil(q/60),d=diff(day,e.date),ph=e.kind==='tarea'?-1:d>7?0:d>3?1:d>1?2:3;
     const frac=p.n?Math.min(.99,(p.all+Math.max(0,diff(t,day))*p.quota)/p.n):0;
-    const tps=topicNames(e),T=tps?tps.length:(e.temas||1),list=TASKS[e.subj]||TASKS[ALIAS[e.subj]]||TASKS._;
+    const tps=topicNames(e),T=tps?tps.length:(e.temas||1),list=TASKS[e.subj]||TASKS[ALIAS[e.subj]]||(isESO()?TASKS._eso:TASKS._);
     // Importancia: cuanto más cerca, más fuerte, más atrasado y peor vayas en la materia, antes va
     const rk=e.kind==='examen'?gradeRisk(e.subj):1,prio=(e.kind==='examen'?LV[e.level||'normal'].m*3:2.5)/Math.max(1,d)*(p.late?1.3:1)*rk,
       av=rk>=1.15?subjAvg(e.subj):null;
@@ -1242,16 +1271,17 @@ function planFor(day){
 function vTop(){
   const L=lvl(),st=streak(),pd=diff(today(),S.pauDate),C=2*Math.PI*18,p=L.x/L.need;
   return `<svg class="logo" viewBox="0 0 64 64" aria-label="Rumbo"><rect width="64" height="64" rx="15" fill="var(--logo-bg)"/><path d="M20 45 32 14 44 45 32 37.5Z" fill="var(--logo-fg)"/><path d="M32 14 44 45 32 37.5Z" fill="var(--logo-fg2)"/></svg>
-  <button class="chip" data-act="pau" title="Días para la PAU">${(TH[S.theme]||TH.original).pau.join(pd>=0?pd:0)}</button>
+  ${isESO()?'':`<button class="chip" data-act="pau" title="Días para la PAU">${(TH[S.theme]||TH.original).pau.join(pd>=0?pd:0)}</button>`}
   <div class="sp"></div>
   <button class="navb" style="width:38px;height:38px" data-act="schedview" aria-label="Horario de clase" title="Horario de clase">${ic('cal')}</button>
   <div class="streak ${st?'hot':''}" title="Racha de días estudiando">${ic('flame')} ${st}</div>
   <div class="ring" data-act="progress" title="Nivel ${L.n} · ${L.x}/${L.need} XP"><svg width="44" height="44"><circle cx="22" cy="22" r="18" stroke="var(--track)" stroke-width="3.5" fill="none"/><circle cx="22" cy="22" r="18" stroke="var(--acc)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-p)}"/></svg><span>${L.n}</span></div>`}
 
 /* ====== Cuestionario inicial (la primera vez que alguien abre la app) ====== */
-let OB={step:0,name:'',curso:2,media1:'',mod:null,troncal:null,picks:new Set(),extra:[],wd:90,we:60};
-// Al cambiar de curso o modalidad se marcan las comunes y la primera troncal posible
-function obReset(){const M=MODS[OB.mod];OB.picks=new Set(COMMON[OB.curso]);OB.troncal=null;
+let OB={step:0,name:'',etapa:'bach',curso:2,media1:'',mod:null,troncal:null,picks:new Set(),extra:[],wd:90,we:60};
+// Al cambiar de curso o modalidad se marcan las comunes y la primera troncal posible (en la ESO, sus comunes)
+function obReset(){if(OB.etapa==='eso'){OB.picks=new Set(ESO[OB.curso].com);OB.troncal=null;OB.mod=null;return}
+  const M=MODS[OB.mod];OB.picks=new Set(COMMON[OB.curso]);OB.troncal=null;
   if(M){const ts=M.t.filter(id=>!CAT[id].c||CAT[id].c===OB.curso);OB.troncal=ts[0]||null;if(OB.troncal)OB.picks.add(OB.troncal)}}
 // Guarda lo escrito en los campos antes de volver a pintar
 function obSync(){const n=$('#onbName');if(n)OB.name=n.value.trim();const m=$('#onbM1');if(m)OB.media1=m.value}
@@ -1304,25 +1334,36 @@ function vInst(){
     <div class="note ithen">Cuando veas el icono en tu pantalla de inicio, <b style="color:var(--tx)">cierra esta página y abre Rumbo desde el icono</b>. Allí te haré las preguntas para preparar tu plan.${ios?' Lo que hagas aquí, en el navegador, no pasa a la app del icono.':''}</div>
     <div style="height:30px"></div></div>`}
 function vOnb(){
-  const st=OB.step,N=5,dots=`<div class="obdots">${[...Array(N)].map((_,i)=>`<i class="${i<=st?'on':''} ${i===st?'now':''}"></i>`).join('')}</div>`;
+  // En la ESO se salta el paso de la modalidad, así que hay un punto menos
+  const st=OB.step,N=5,eso=OB.etapa==='eso',vs=eso&&st>2?st-1:st,dots=`<div class="obdots">${[...Array(eso?4:5)].map((_,i)=>`<i class="${i<=vs?'on':''} ${i===vs?'now':''}"></i>`).join('')}</div>`;
   const nav=(ok,label='Siguiente')=>`<div class="obnav">${st?`<button class="btn ghost" data-act="obGo" data-s="${st-1}">Atrás</button>`:''}
     <button class="btn" data-act="${st===N-1?'obDone':'obGo'}" data-s="${st+1}" ${ok?'':'disabled'}>${label}</button></div>`;
   const chip=(id,on,act,extra='')=>`<button class="${on?'on':''}" data-act="${act}" data-id="${id}" ${extra}>${on?ic('check','s'):''}${h(catName(id,OB.curso))}</button>`;
   let o=`<div class="onb">${dots}`;
   if(st===0)o+=`<svg class="logo" style="width:56px;height:56px;margin:8px 0 18px" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--logo-bg)"/><path d="M20 45 32 14 44 45 32 37.5Z" fill="var(--logo-fg)"/><path d="M32 14 44 45 32 37.5Z" fill="var(--logo-fg2)"/></svg>
     <div class="big" style="margin-top:0">Bienvenido a Rumbo</div>
-    <div class="mut">Tu plan de estudio para Bachillerato. Te hago unas preguntas rápidas para prepararlo a tu medida.</div>
+    <div class="mut">Tu plan de estudio para la ESO y Bachillerato. Te hago unas preguntas rápidas para prepararlo a tu medida.</div>
     <label class="f" for="onbName">¿Cómo te llamas?</label><input class="inp" id="onbName" value="${h(OB.name)}" placeholder="Tu nombre" autocomplete="given-name">
     ${nav(true,'Empezar')}
     <button class="link" style="margin-top:-12px" data-act="xfer">¿Ya usas Rumbo en otro móvil u ordenador? Trae tus datos</button>`;
   else if(st===1)o+=`<div class="big">¿En qué curso estás?</div><div class="mut">Así te propongo las asignaturas de tu curso.</div>
-    ${[1,2].map(c=>`<button class="opt ${OB.curso===c?'on':''}" data-act="obCurso" data-c="${c}"><b>${c}º de Bachillerato</b><span>${c===2?'Este año tienes la PAU':'La PAU será el año que viene'}</span></button>`).join('')}
-    ${OB.curso===2?`<label class="f" for="onbM1">Tu media de 1º de Bachillerato</label><input class="inp" id="onbM1" inputmode="decimal" value="${h(OB.media1)}" placeholder="p. ej. 7,85">
+    <label class="f">ESO</label><div class="optg">${[1,2,3,4].map(c=>`<button class="opt ${eso&&OB.curso===c?'on':''}" data-act="obCurso" data-c="e${c}"><b>${c}º de ESO</b></button>`).join('')}</div>
+    <label class="f">Bachillerato</label><div class="optg">${[1,2].map(c=>`<button class="opt ${!eso&&OB.curso===c?'on':''}" data-act="obCurso" data-c="b${c}"><b>${c}º de Bach.</b><span>${c===2?'Este año tienes la PAU':'La PAU, el año que viene'}</span></button>`).join('')}</div>
+    ${!eso&&OB.curso===2?`<label class="f" for="onbM1">Tu media de 1º de Bachillerato</label><input class="inp" id="onbM1" inputmode="decimal" value="${h(OB.media1)}" placeholder="p. ej. 7,85">
     <div class="mut small" style="margin-top:6px">Sirve para calcular tu nota de la PAU. Si no la sabes, déjalo vacío y la pones luego en Ajustes.</div>`:''}
     ${nav(true)}`;
   else if(st===2)o+=`<div class="big">¿Qué modalidad haces?</div><div class="mut">Con ella te sugiero tus asignaturas y sé cuál cuenta para la PAU.</div>
     ${Object.entries(MODS).map(([k,m])=>`<button class="opt ${OB.mod===k?'on':''}" data-act="obMod" data-m="${k}"><b>${m.n}</b><span>${m.d}</span></button>`).join('')}
     ${nav(!!OB.mod)}`;
+  else if(st===3&&eso){const E=ESO[OB.curso],full=obCount()>=MAX_SUBJ,pk=id=>chip(id,OB.picks.has(id),'obPick',full&&!OB.picks.has(id)?'disabled':'');
+    o+=`<div class="big">Tus asignaturas</div><div class="mut">Cada una tendrá sus notas, sus exámenes y su plan de estudio. Toca para marcar o quitar; puedes cambiarlas cuando quieras desde Perfil.</div>
+    <label class="f">Comunes</label><div class="chips">${E.com.map(pk).join('')}</div>
+    ${E.opc.length?`<label class="f">De opción <span class="dim">(normalmente eliges 3)</span></label><div class="chips">${E.opc.map(pk).join('')}</div>`:''}
+    <label class="f">Optativas <span class="dim">(normalmente eliges 1)</span></label><div class="chips">${E.opt.map(pk).join('')}
+      ${OB.extra.map((x,i)=>`<button class="on" data-act="obDelX" data-i="${i}">${h(x)} ${ic('x','s')}</button>`).join('')}</div>
+    <div class="row" style="margin-top:10px"><input class="inp" id="onbExtra" placeholder="Otra asignatura que no esté" ${full?'disabled':''}><button class="btn icon" data-act="obAdd" aria-label="Añadir asignatura" ${full?'disabled':''}>${ic('plus')}</button></div>
+    <div class="mut small" style="margin-top:8px">${obCount()} de ${MAX_SUBJ} como máximo</div>
+    ${nav(obCount()>=3)}`}
   else if(st===3){const M=MODS[OB.mod],ts=M.t.filter(inCurso),os=M.o.filter(id=>inCurso(id)&&id!==OB.troncal),full=obCount()>=MAX_SUBJ;
     o+=`<div class="big">Tus asignaturas</div><div class="mut">Cada una tendrá sus notas, sus exámenes y su plan de estudio. Toca para marcar o quitar; puedes cambiarlas cuando quieras desde Perfil.</div>
     ${ts.length>1?`<label class="f">Tu troncal de modalidad (la que entra en la PAU)</label><div class="chips">${ts.map(id=>chip(id,OB.troncal===id,'obTr')).join('')}</div>`:''}
@@ -1335,20 +1376,21 @@ function vOnb(){
     ${nav(!!OB.troncal&&obCount()>=3)}`}
   else{const ch=(k,v,arr)=>`<div class="chips">${arr.map(n=>`<button class="${OB[k]===n?'on':''}" data-act="obTime" data-k="${k}" data-n="${n}">${n?fmtMin(n):'Nada'}</button>`).join('')}</div>`;
     o+=`<div class="big">¿Cuánto puedes estudiar?</div><div class="mut">Con esto reparto el estudio de cada examen. Luego puedes ajustar cada día por separado en la pestaña Plan.</div>
-    <label class="f">De lunes a viernes, cada día</label>${ch('wd',OB.wd,[30,60,90,120,150,180])}
-    <label class="f">Sábados y domingos, cada día</label>${ch('we',OB.we,[0,30,60,90,120,180])}
+    <label class="f">De lunes a viernes, cada día</label>${ch('wd',OB.wd,eso?[30,45,60,90,120]:[30,60,90,120,150,180])}
+    <label class="f">Sábados y domingos, cada día</label>${ch('we',OB.we,eso?[0,30,45,60,90]:[0,30,60,90,120,180])}
     ${nav(true,'Listo, empezar')}`}
   return o+'</div>'}
 function obFinish(){
-  const c=OB.curso,ids=[...OB.picks].filter(id=>CAT[id]);
-  // Orden: comunes, troncal, de modalidad, optativas; las escritas a mano al final
-  const rank=id=>COMMON[c].includes(id)?0:id===OB.troncal?1:MODS[OB.mod].o.includes(id)?2:3;
+  const c=OB.curso,eso=OB.etapa==='eso',ids=[...OB.picks].filter(id=>CAT[id]);
+  // Orden: comunes, troncal, de modalidad, optativas; las escritas a mano al final (en la ESO no hay PAU)
+  const rank=eso?id=>ESO[c].com.includes(id)?0:ESO[c].opc.includes(id)?2:3
+    :id=>COMMON[c].includes(id)?0:id===OB.troncal?1:MODS[OB.mod].o.includes(id)?2:3;
   ids.sort((a,b)=>rank(a)-rank(b));
-  const subs=ids.map(id=>({id,name:catName(id,c),target:null,pau:rank(id)<=2&&!COMMON[c].includes(id)?'mod':undefined}))
+  const subs=ids.map(id=>({id,name:catName(id,c),target:null,pau:!eso&&rank(id)<=2&&!COMMON[c].includes(id)?'mod':undefined}))
     .concat(OB.extra.map(n=>({id:'c'+uid(),name:n,target:null})));
   subs.forEach((s,i)=>{s.color=SUBJ_PAL[i%SUBJ_PAL.length];if(!s.pau)delete s.pau});
-  S.subjects=subs;S.name=OB.name;S.curso=c;S.mod=OB.mod;
-  S.media1=c===2?num(OB.media1):null;
+  S.subjects=subs;S.name=OB.name;S.curso=c;S.mod=eso?null:OB.mod;S.etapa=eso?'eso':'bach';
+  S.media1=!eso&&c===2?num(OB.media1):null;
   S.pau.troncal=OB.troncal;S.pau.histChoice='hes';
   S.avail=[OB.we,OB.wd,OB.wd,OB.wd,OB.wd,OB.wd,OB.we];
   // Recién configurado: se ofrece la guía y salen los primeros pasos en Inicio
@@ -1409,7 +1451,7 @@ const TOUR=[
   {q:'.tb[data-t="inicio"]',t:'Inicio',d:'Lo que te toca hoy, tu racha y el calendario con tus exámenes y tareas.'},
   {q:'.tb[data-t="clase"]',t:'Estudio',d:'Para ponerte a estudiar cuando quieras, con temporizador y objetivos, y ver tus materias una a una.'},
   {q:'.tb[data-t="plan"]',t:'Plan',d:'Qué estudiar cada día, numerado de más a menos importante. Aquí también cambias tu tiempo libre.'},
-  {q:'.tb[data-t="perfil"]',t:'Perfil',d:'Tus medias, las gráficas, la calculadora de la PAU y los ajustes.'},
+  {q:'.tb[data-t="perfil"]',t:'Perfil',get d(){return isESO()?'Tus medias, las gráficas, tu progreso y los ajustes.':'Tus medias, las gráficas, la calculadora de la PAU y los ajustes.'}},
   {q:'.fab',t:'El botón +',d:'Para añadir exámenes, tareas o notas, o ponerte a estudiar con el temporizador.'},
   {q:'#top [data-act="schedview"]',t:'Tu horario',d:'Discreto, aquí arriba. Ponlo una vez y el plan repasará lo que das cada día en clase.'}];
 let tourI=-1,offerT=0,obJust=false;
@@ -1708,7 +1750,7 @@ function vPerfil(){
   const ini=(S.name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const L=lvl(),C=2*Math.PI*26,nb=BADGES.filter(b=>b.ok()).length,r=pauCalc();
   let o=`<div class="prof"><div class="avatar">${h(ini)||ic('user')}</div><div style="flex:1;min-width:0"><div class="nm ell">${h(S.name||'Tu nombre')}</div>
-    <button class="link left" style="margin:4px 0 0;color:var(--mut);font-weight:500;font-size:15px" data-act="settings">${S.curso||2}º de Bachillerato · ${h(S.region)} ${ic('edit','s')}</button></div>
+    <button class="link left" style="margin:4px 0 0;color:var(--mut);font-weight:500;font-size:15px" data-act="settings">${cursoTxt()} · ${h(S.region)} ${ic('edit','s')}</button></div>
     <button class="circ" data-act="settings" aria-label="Ajustes">${ic('gear')}</button></div>
   <div class="card"><div class="eyebrow">Tu curso</div>
     <div class="course" style="margin-top:12px"><div><div class="num xl">${fmtAvg(m2)}</div><div class="mut" style="margin-top:6px">media de ${S.curso||2}º</div></div>
@@ -1723,8 +1765,8 @@ function vPerfil(){
       <div class="num">${fmtAvg(a)}</div><div class="st ${cl}">${st}</div></button>`}).join('')}</div>
   <div class="card tight tap row" style="margin-top:14px;padding:16px" data-act="bag"><span class="letter" style="background:rgba(47,124,246,.15);color:var(--acc2);width:48px;height:48px;border-radius:14px">${ic('bag')}</span>
     <div style="flex:1;min-width:0"><div style="font-size:18px;font-weight:700">Mochila</div><div class="mut">${S.files.length} ${S.files.length===1?'archivo':'archivos'} · ${S.memos.length} ${S.memos.length===1?'apunte':'apuntes'} rápidos</div></div>${ic('right')}</div>
-  <h2>Tu nota PAU</h2>
-  <div class="card tap between" data-act="pau"><div><div class="num" style="font-size:48px">${r.adm!=null?fmt(r.adm,3):'—'}</div><div class="mut" style="margin-top:8px">nota de admisión estimada</div></div><span class="link" style="width:auto;margin:0">Calcular ${ic('right','s')}</span></div>
+  ${isESO()?'':`<h2>Tu nota PAU</h2>
+  <div class="card tap between" data-act="pau"><div><div class="num" style="font-size:48px">${r.adm!=null?fmt(r.adm,3):'—'}</div><div class="mut" style="margin-top:8px">nota de admisión estimada</div></div><span class="link" style="width:auto;margin:0">Calcular ${ic('right','s')}</span></div>`}
   <h2>Progreso</h2>
   <div class="card tap row" data-act="progress"><div class="ring" style="width:64px;height:64px"><svg width="64" height="64"><circle cx="32" cy="32" r="26" stroke="var(--track)" stroke-width="5" fill="none"/><circle cx="32" cy="32" r="26" stroke="var(--acc)" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-L.x/L.need)}"/></svg><span style="font-size:22px">${L.n}</span></div>
     <div style="flex:1;min-width:0"><div style="font-size:18px;font-weight:700">${rank(L.n)} · nivel ${L.n}</div><div class="mut" style="margin-top:3px">${L.need-L.x} XP para el siguiente · ${nb} de ${BADGES.length} insignias</div></div>${ic('right')}</div>`;
@@ -1737,12 +1779,12 @@ function openSettings(){
      <span class="tsw" style="background:${t.sw[0]}"><i style="background:${t.sw[1]}"></i><i style="background:${t.sw[2]}"></i></span>${t.n}</button>`).join('')}</div>
    <label class="f" for="setname">Nombre</label><input class="inp" id="setname" value="${h(S.name)}">
    <label class="f" for="setreg">Comunidad</label><select class="inp" id="setreg">${REGIONS.map(r=>`<option ${r===S.region?'selected':''}>${r}</option>`).join('')}</select>
-   <label class="f" for="setpau">Fecha de la PAU</label><input class="inp" type="date" id="setpau" value="${S.pauDate}">
+   ${isESO()?'':`<label class="f" for="setpau">Fecha de la PAU</label><input class="inp" type="date" id="setpau" value="${S.pauDate}">`}
    <div class="grid2"><div><label class="f" for="sett2">Inicio 2º trimestre</label><input class="inp" type="date" id="sett2" value="${S.trimStart.t2||''}"></div>
      <div><label class="f" for="sett3">Inicio 3º trimestre</label><input class="inp" type="date" id="sett3" value="${S.trimStart.t3||''}"></div></div>
    <div class="mut small" style="margin-top:6px">Si los dejas vacíos: el 2º desde enero y el 3º desde abril.</div>
-   <label class="f" for="setcur">Curso</label><select class="inp" id="setcur">${[1,2].map(c=>`<option value="${c}" ${(S.curso||2)===c?'selected':''}>${c}º de Bachillerato</option>`).join('')}</select>
-   ${(S.curso||2)===2?`<label class="f" for="setm1">Media de 1º de Bachillerato</label><input class="inp" id="setm1" inputmode="decimal" value="${S.media1!=null?fmt(S.media1,2):''}">`:''}
+   <label class="f" for="setcur">Curso</label><select class="inp" id="setcur">${[['e',1],['e',2],['e',3],['e',4],['b',1],['b',2]].map(([e,c])=>`<option value="${e}${c}" ${(e==='e')===isESO()&&(S.curso||2)===c?'selected':''}>${c}º de ${e==='e'?'ESO':'Bachillerato'}</option>`).join('')}</select>
+   ${!isESO()&&(S.curso||2)===2?`<label class="f" for="setm1">Media de 1º de Bachillerato</label><input class="inp" id="setm1" inputmode="decimal" value="${S.media1!=null?fmt(S.media1,2):''}">`:''}
    <label class="f" for="setm2">Media de ${S.curso||2}º (vacío = la calcula con tus notas: ${fmt(media2Auto())})</label><input class="inp" id="setm2" inputmode="decimal" value="${S.media2Manual!=null?fmt(S.media2Manual,2):''}">
    <button class="btn" style="margin-top:18px" data-act="savesettings">Guardar</button>
    <div class="note">${syncState==='ok'?'Tus datos se sincronizan entre el ordenador y el iPhone automáticamente.':syncState==='err'?'No se ha podido sincronizar ahora mismo; se guardan en este dispositivo y se subirán cuando vuelva la conexión.':'Tus datos se guardan en este dispositivo. Para llevarlos a otro, usa «Pasar mis datos a otro dispositivo».'}</div>
@@ -2140,15 +2182,21 @@ const A={
   sxdel:d=>{const x=S.schedX[+d.i];S.schedX.splice(+d.i,1);for(const w in S.sched)S.sched[w]=S.sched[w].map(c=>c===x?'':c);save();openSched();render()},
   setdate:d=>{$('#evd').value=d.d;updEst()},
   theme:d=>{S.theme=d.k;save();render();openSettings()},
-  obGo:d=>{obSync();if(OB.step===1&&OB.curso===2&&OB.media1&&(num(OB.media1)==null||num(OB.media1)<0||num(OB.media1)>10)&&+d.s>1){toast('La media tiene que ser un número entre 0 y 10');return}
-    if(+d.s===3&&!OB.picks.size)obReset();OB.step=+d.s;render();scrollTo(0,0)},
-  obCurso:d=>{obSync();OB.curso=+d.c;if(OB.mod)obReset();render()},
+  obGo:d=>{obSync();const eso=OB.etapa==='eso';if(OB.step===1&&!eso&&OB.curso===2&&OB.media1&&(num(OB.media1)==null||num(OB.media1)<0||num(OB.media1)>10)&&+d.s>1){toast('La media tiene que ser un número entre 0 y 10');return}
+    // En la ESO no hay modalidad: del curso se pasa directo a las asignaturas (y al volver, igual)
+    let s=+d.s;if(eso&&s===2)s=OB.step===1?3:1;
+    if(s===3&&!OB.picks.size)obReset();OB.step=s;render();scrollTo(0,0)},
+  obCurso:d=>{obSync();const et=d.c[0]==='e'?'eso':'bach',c=+d.c.slice(1),cambia=et!==OB.etapa;
+    OB.etapa=et;OB.curso=c;
+    // Tiempo libre propuesto según la etapa (si no lo ha tocado todavía)
+    if(cambia&&!OB.timeSet){OB.wd=et==='eso'?60:90;OB.we=et==='eso'?30:60}
+    if(et==='eso'||OB.mod)obReset();else OB.picks=new Set();render()},
   obMod:d=>{obSync();if(OB.mod!==d.m){OB.mod=d.m;obReset()}render()},
   obTr:d=>{if(OB.troncal)OB.picks.delete(OB.troncal);OB.troncal=d.id;OB.picks.add(d.id);render()},
   obPick:d=>{if(d.id===OB.troncal)return;OB.picks.has(d.id)?OB.picks.delete(d.id):obCount()<MAX_SUBJ&&OB.picks.add(d.id);render()},
   obAdd:()=>{const v=$('#onbExtra').value.trim();if(!v||obCount()>=MAX_SUBJ)return;if(!OB.extra.includes(v))OB.extra.push(v);render();setTimeout(()=>$('#onbExtra')?.focus(),30)},
   obDelX:d=>{OB.extra.splice(+d.i,1);render()},
-  obTime:d=>{OB[d.k]=+d.n;render()},
+  obTime:d=>{OB[d.k]=+d.n;OB.timeSet=1;render()},
   obDone:()=>obFinish(),
   guideHide:()=>{S.intro.steps=1;save();render()},
   guideSched:()=>{schedEd=1;openSched()},
@@ -2166,9 +2214,9 @@ const A={
     try{importState(await unpackState(v))}catch(e){toast('Ese código no es válido. Cópialo entero, empieza por RUMBO')}},
   settings:()=>openSettings(),analysis:()=>openAnalysis(),progress:()=>openProgress(),pau:()=>openPau(),bag:()=>openBag(),
   managefiles:()=>openManageFiles(),addsubj:()=>openAddSubj(),
-  savesettings:()=>{S.name=$('#setname').value.trim();S.region=$('#setreg').value;if($('#setpau').value)S.pauDate=$('#setpau').value;
+  savesettings:()=>{S.name=$('#setname').value.trim();S.region=$('#setreg').value;if($('#setpau')?.value)S.pauDate=$('#setpau').value;
     S.trimStart={t2:$('#sett2').value||null,t3:$('#sett3').value||null};
-    S.curso=+$('#setcur').value;if($('#setm1'))S.media1=num($('#setm1').value);
+    const cv=$('#setcur').value;S.etapa=cv[0]==='e'?'eso':'bach';S.curso=+cv.slice(1);if($('#setm1'))S.media1=num($('#setm1').value);
     S.media2Manual=num($('#setm2').value);save();closeSheet();toast('Ajustes guardados');render()},
   savesubj:()=>{const n=$('#nsn').value.trim();if(!n){toast('Escribe el nombre de la materia');return}
     S.subjects.push({id:'c'+uid(),name:n,color:$('#ncol .on').dataset.c,target:null});save();closeSheet();render()},
