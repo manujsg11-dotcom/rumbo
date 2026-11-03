@@ -226,6 +226,16 @@ body.onbm nav.tab{display:none}
 .obnav{display:flex;gap:10px;margin:26px 0 30px}.obnav .btn.ghost{width:auto;padding:0 20px}
 .btn:disabled,.chips button:disabled{opacity:.4;cursor:default}
 .onb .chips button svg{margin-left:-3px}
+/* Antes del cuestionario (solo versión web, en el móvil y fuera del icono): cómo instalarla */
+.idev{display:inline-flex;align-items:center;gap:7px;margin:6px 0 2px;padding:6px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--mut);font-size:13.5px;font-weight:600}
+.idev i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.isteps{display:grid;gap:10px;margin-top:18px}
+.istep{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;line-height:1.4}
+.istep>b{flex:0 0 26px;height:26px;border-radius:50%;border:1.5px solid var(--acc);color:var(--acc);display:grid;place-items:center;font-size:13.5px;margin-top:-1px}
+.istep .k{display:inline-flex;align-items:center;gap:4px;vertical-align:-3px;padding:1px 7px;border-radius:8px;background:var(--card2,var(--bg));border:1px solid var(--line);font-weight:700;font-size:14px;white-space:nowrap}
+.istep .k svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.istep small{display:block;color:var(--mut);font-size:13px;margin-top:3px}
+.ithen{margin-top:16px}
 /* Nombres largos de materia: la etiqueta pasa a dos líneas en vez de salirse de la pantalla */
 .chips button{height:auto;min-height:36px;padding-top:6px;padding-bottom:6px;max-width:100%;text-align:left;line-height:1.25}
 /* Retoques visuales */
@@ -1247,6 +1257,52 @@ function obReset(){const M=MODS[OB.mod];OB.picks=new Set(COMMON[OB.curso]);OB.tr
 function obSync(){const n=$('#onbName');if(n)OB.name=n.value.trim();const m=$('#onbM1');if(m)OB.media1=m.value}
 const inCurso=id=>!CAT[id].c||CAT[id].c===OB.curso;
 const obCount=()=>OB.picks.size+OB.extra.length;
+
+/* ====== Instalar la app (solo versión web) ======
+   Quien la abre por primera vez en el móvil desde el navegador ve antes del cuestionario cómo añadirla a la
+   pantalla de inicio, según su móvil y su navegador. En el iPhone la app del icono no comparte datos con el
+   navegador, por eso el cuestionario se hace ya desde el icono. Dentro de Claude no sale (no hay manifest). */
+const IS_WEB=!!document.querySelector('link[rel="manifest"]');
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true;
+function devInfo(){const u=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1),and=/Android/.test(u);
+  const inapp=/Instagram|FBAN|FBAV|FBIOS|Line\/|TikTok|musical_ly|Bytedance|Snapchat|Twitter/.test(u);
+  let b;if(ios)b=inapp||/GSA\//.test(u)?'otro':/CriOS/.test(u)?'chrome':/EdgiOS/.test(u)?'edge':/FxiOS/.test(u)?'firefox':/OPiOS|OPT\//.test(u)?'otro':'safari';
+  else if(and)b=inapp||/; wv\)/.test(u)?'otro':/SamsungBrowser/.test(u)?'samsung':/EdgA/.test(u)?'edge':/Firefox/.test(u)?'firefox':/OPR|Opera/.test(u)?'opera':'chrome';
+  return{os:ios?'ios':and?'and':null,b}}
+let instPrompt=null,instDone=false;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();instPrompt=e;if(needInstall())render()});
+addEventListener('appinstalled',()=>{instDone=true;instPrompt=null;if(needInstall())render()});
+function needInstall(){if(!IS_WEB||S.setup||isStandalone())return false;try{if(localStorage.getItem(KEY+'.noinst'))return false}catch(e){}return !!devInfo().os}
+const ISV={share:'<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11v9h12v-9"/>',add:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
+  dotsV:'<path d="M12 5h.01M12 12h.01M12 19h.01" stroke-width="3.2"/>',dotsH:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3.2"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>'};
+const kb=(t,i)=>`<span class="k">${i?`<svg viewBox="0 0 24 24">${ISV[i]}</svg>`:''}${t}</span>`;
+function vInst(){
+  const D=devInfo(),BN={safari:'Safari',chrome:'Chrome',edge:'Edge',firefox:'Firefox',samsung:'Samsung Internet',opera:'Opera',otro:'otra app'},ios=D.os==='ios';
+  const lg=`<svg class="logo" style="width:56px;height:56px;margin:8px 0 14px" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--logo-bg)"/><path d="M20 45 32 14 44 45 32 37.5Z" fill="var(--logo-fg)"/><path d="M32 14 44 45 32 37.5Z" fill="var(--logo-fg2)"/></svg>`;
+  if(instDone)return `<div class="onb">${lg}<div class="big" style="margin-top:0">¡Ya la tienes instalada!</div>
+    <div class="mut">Cierra esta página y <b style="color:var(--tx)">abre Rumbo desde el icono</b> de tu pantalla de inicio. Allí te haré unas preguntas para preparar tu plan.</div></div>`;
+  const st=(...a)=>`<div class="isteps">${a.map((x,i)=>`<div class="istep"><b>${i+1}</b><div>${x}</div></div>`).join('')}</div>`;
+  const S3=ios?{
+    safari:st(`Toca ${kb('Compartir','share')} en la barra de abajo.<small>Si no lo ves, toca ${kb('','dotsH')} abajo a la derecha y luego Compartir. Si la abriste desde WhatsApp, toca la brújula para abrirla en Safari.</small>`,`Baja y toca ${kb('Añadir a pantalla de inicio','add')}.`,`Toca ${kb('Añadir')} arriba a la derecha.`),
+    chrome:st(`Toca ${kb('Compartir','share')} arriba, al lado de la dirección.`,`Toca ${kb('Añadir a pantalla de inicio','add')}.<small>Si no te sale, ábrela en Safari y hazlo desde allí.</small>`,`Toca ${kb('Añadir')}.`),
+    edge:st(`Toca el menú ${kb('','menu')} de abajo.`,`Toca ${kb('Compartir','share')} y luego ${kb('Añadir a pantalla de inicio','add')}.`,`Toca ${kb('Añadir')}.`),
+    firefox:st(`Toca el menú ${kb('','menu')}.`,`Toca ${kb('Compartir','share')} y luego ${kb('Añadir a pantalla de inicio','add')}.`,`Toca ${kb('Añadir')}.`),
+    otro:st(`Desde aquí no se puede instalar. Copia el enlace:<div style="margin-top:10px"><button class="btn sm ghost" data-act="instCopy">Copiar enlace</button></div><small>O toca ${kb('','dotsH')} y elige «Abrir en el navegador».</small>`,`Abre <b>Safari</b> y pega el enlace.`,`Allí toca ${kb('Compartir','share')} → ${kb('Añadir a pantalla de inicio','add')}.`)
+  }[D.b]:{
+    chrome:st(`Toca el menú ${kb('','dotsV')} arriba a la derecha.`,`Toca ${kb('Añadir a pantalla de inicio')}<small>En algunos móviles pone «Instalar aplicación».</small>`,`Toca ${kb('Instalar')}.`),
+    samsung:st(`Toca el menú ${kb('','menu')} abajo a la derecha.`,`Toca ${kb('Añadir página a')}.`,`Elige ${kb('Pantalla de inicio')}.`),
+    edge:st(`Toca el menú ${kb('','dotsH')} de abajo.`,`Toca ${kb('Añadir al teléfono')}.`,`Toca ${kb('Instalar')}.`),
+    firefox:st(`Toca el menú ${kb('','dotsV')}.`,`Toca ${kb('Añadir a la pantalla de inicio')}<small>O «Instalar», según la versión.</small>`,`Confirma con ${kb('Añadir')}.`),
+    opera:st(`Toca el menú ${kb('','dotsV')}.`,`Toca ${kb('Añadir a…')}.`,`Elige ${kb('Pantalla de inicio')}.`),
+    otro:st(`Desde aquí no se puede instalar. Toca ${kb('','dotsV')} arriba a la derecha.`,`Elige ${kb('Abrir en Chrome')}<small>O «Abrir en el navegador». También puedes <button class="link" style="display:inline;width:auto;margin:0;font-size:13px" data-act="instCopy">copiar el enlace</button>.</small>`,`Allí sigue los pasos para instalarla.`)
+  }[D.b];
+  return `<div class="onb">${lg}<div class="big" style="margin-top:0">Instala Rumbo en tu móvil</div>
+    <div class="mut">Así la tendrás como una app más, a pantalla completa y con su icono. Tarda 10 segundos.</div>
+    <div class="idev"><i></i>${ios?'iPhone':'Android'} · ${BN[D.b]}</div>
+    ${instPrompt?`<button class="btn" style="margin-top:18px" data-act="instGo">${ic('plus')} Instalar Rumbo</button><div class="mut small" style="margin-top:12px">¿No te funciona el botón? Hazlo a mano:</div>`:''}
+    ${S3}
+    <div class="note ithen">Cuando veas el icono en tu pantalla de inicio, <b style="color:var(--tx)">cierra esta página y abre Rumbo desde el icono</b>. Allí te haré las preguntas para preparar tu plan.${ios?' Lo que hagas aquí, en el navegador, no pasa a la app del icono.':''}</div>
+    <button class="link" style="color:var(--mut);margin:18px 0 30px" data-act="instSkip">Prefiero usarla en el navegador</button></div>`}
 function vOnb(){
   const st=OB.step,N=5,dots=`<div class="obdots">${[...Array(N)].map((_,i)=>`<i class="${i<=st?'on':''} ${i===st?'now':''}"></i>`).join('')}</div>`;
   const nav=(ok,label='Siguiente')=>`<div class="obnav">${st?`<button class="btn ghost" data-act="obGo" data-s="${st-1}">Atrás</button>`:''}
@@ -2039,6 +2095,10 @@ const A={
     // Cuenta para el próximo examen o tarea de esa materia, si lo hay
     startTimer({subj:SES.subj,eventId:subjEvs(SES.subj)[0]?.id,min:S.sesMin||45,task:'Sesión libre',goals:SES.goals.map(t=>({t,done:false}))});SES.goals=[];render()},
   addTime:()=>{ADD=null;openAdd()},
+  // Pantalla de instalar (versión web)
+  instGo:async()=>{const p=instPrompt;if(!p)return;try{p.prompt();const r=await p.userChoice;if(r.outcome==='accepted'){instDone=true;instPrompt=null;render()}}catch(e){}},
+  instCopy:async()=>{const u=location.href.split('#')[0];try{await navigator.clipboard.writeText(u);toast('Enlace copiado')}catch(e){toast(u)}},
+  instSkip:()=>{try{localStorage.setItem(KEY+'.noinst','1')}catch(e){}render()},
   addSubj:d=>{if(ADD.subj===d.s)return;ADD.subj=d.s;ADD.ev=subjEvs(d.s)[0]?.id||'';openAdd()},
   addDay:d=>{const v=$('#addDate');if(v)ADD.date=v.value||ADD.date;if(ADD.day===+d.i)return;ADD.day=+d.i;openAdd()},
   addEv:d=>{if(ADD.ev===d.id)return;ADD.ev=d.id;openAdd()},
@@ -2172,6 +2232,7 @@ function render(){
   applyTheme();
   document.body.classList.toggle('onbm',!S.setup);
   if(!S.setup){obSync();setTop('');
+    if(needInstall()){setMain(vInst(),instDone?'instok':'inst');return}
     setMain(syncReady?vOnb():`<div class="loading" aria-label="Cargando"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="var(--logo-bg)"/><path d="M20 45 32 14 44 45 32 37.5Z" fill="var(--logo-fg)"/><path d="M32 14 44 45 32 37.5Z" fill="var(--logo-fg2)"/></svg></div>`,syncReady?'onb'+OB.step:'load');return}
   snapPlan();
   setTop(vTop());
