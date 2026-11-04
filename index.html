@@ -1004,7 +1004,7 @@ function defaults(){return{
   setup:false,etapa:'bach',curso:2,mod:null,
   name:'',region:'Andalucía',theme:'original',
   subjects:[],events:[],
-  log:[],planDone:{},perfect:{},xp:0,media1:null,media2Manual:null,pauDate:'2027-06-01',
+  log:[],planDone:{},planAt:{},perfect:{},xp:0,media1:null,media2Manual:null,pauDate:'2027-06-01',
   avail:[60,90,90,90,90,60,45],exc:{},askedOn:null,
   // Horario de clase, por día de la semana (1 = lunes); id de materia o nombre de otra asignatura
   sched:{1:['','','','','',''],2:['','','','','',''],3:['','','','','',''],4:['','','','','',''],5:['','','','','','']},
@@ -1029,8 +1029,10 @@ let cal={mode:'week',ref:today(),sel:today()};
 
 /* ====== Sincronización entre dispositivos (db de la página) ====== */
 // synced: hasta recibir lo que hay en la nube no se sube nada, para que un dispositivo con datos viejos no la pise
-let dbRef=null,assetsNS=null,syncState='local',pushT=null,writing=Promise.resolve(),synced=false;
-function save(){S.updatedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+// Tampoco cuenta como cambio nuevo lo guardado antes de eso (dirty): si no, un dispositivo viejo parecería el más reciente
+// y sus ajustes antiguos ganarían a los de la nube. cloudTry = esta página intenta sincronizar.
+let dbRef=null,assetsNS=null,syncState='local',pushT=null,writing=Promise.resolve(),synced=false,dirty=false,cloudTry=!!(window.claude&&typeof window.claude.use==='function');
+function save(){if(synced||!cloudTry)S.updatedAt=Date.now();else dirty=true;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
   if(dbRef){clearTimeout(pushT);pushT=setTimeout(push,700)}}
 function push(){if(!dbRef||!synced)return;const body={json:JSON.stringify(S),updatedAt:S.updatedAt||Date.now()};
   writing=writing.then(()=>dbRef.set(body)).then(()=>{syncState='ok'}).catch(e=>{syncState='err';
@@ -1051,11 +1053,19 @@ function mergeStates(L,R){
   M.log=un('log:',N.log,O.log,logKey);M.memos=un('memo:',N.memos,O.memos);M.files=un('file:',N.files,O.files);
   M.subjects=un('subj:',N.subjects,O.subjects);M.xpLog=un('xp:',N.xpLog,O.xpLog);
   M.topics={};for(const s of new Set([...Object.keys(N.topics||{}),...Object.keys(O.topics||{})]))M.topics[s]=un('tp:',(N.topics||{})[s],(O.topics||{})[s]);
-  M.planDone={...O.planDone,...N.planDone};
+  // Bloques hechos: se juntan los de los dos lados; S.planAt dice cuándo se tocó cada uno, para que un bloque
+  // desmarcado en un dispositivo no vuelva a salir marcado por el otro
+  const na=N.planAt||{},oa=O.planAt||{},nd=N.planDone||{},od=O.planDone||{};
+  M.planAt={...oa};for(const k in na)M.planAt[k]=Math.max(M.planAt[k]||0,na[k]);
+  M.planDone={};for(const d of new Set([...Object.keys(nd),...Object.keys(od)])){const a=nd[d]||[],b=od[d]||[];
+    M.planDone[d]=[...new Set([...a,...b])].filter(k=>(a.includes(k)&&b.includes(k))||(a.includes(k)?(na[k]||0)>=(oa[k]||0):(oa[k]||0)>=(na[k]||0)))}
   M.perfect={...O.perfect,...N.perfect};
+  if(M.timer&&M.del[tmKey(M.timer)])M.timer=null;
   return M}
 const sameData=(a,b)=>JSON.stringify({...a,updatedAt:0,timer:null})===JSON.stringify({...b,updatedAt:0,timer:null});
 const tomb=k=>{S.del[k]=Date.now()};
+// Una sesión terminada o descartada se apunta en S.del: así no sigue viva en el otro dispositivo
+const tmKey=T=>'tm:'+(T.id||T.start);
 // El cuestionario inicial espera a saber si esta persona ya tiene datos en otro dispositivo
 let syncReady=false;
 function setSyncReady(){if(syncReady)return;syncReady=true;if(!S.setup)render()}
@@ -1064,26 +1074,27 @@ async function initSync(){
   try{
     const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
     claude.use('assets').then(a=>{assetsNS=a}).catch(()=>{});
-    if(!db||!user)return setSyncReady();
-    const id=await user.id();if(!id)return setSyncReady();
+    if(!db||!user){cloudTry=false;return setSyncReady()}
+    const id=await user.id();if(!id){cloudTry=false;return setSyncReady()}
     dbRef=db.doc('data/users/'+id+'/state');
     dbRef.onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
       synced=true;
       if(!snap.exists){push();setSyncReady();return}
       const d=snap.data();syncState='ok';
-      if((d.updatedAt||0)===(S.updatedAt||0))return setSyncReady();
+      if((d.updatedAt||0)===(S.updatedAt||0)){if(dirty){dirty=false;save()}return setSyncReady()}
       try{
         const R=hydrate(JSON.parse(d.json)),keepTimer=S.timer,M=hydrate(mergeStates(S,R));
-        if(!M.timer&&keepTimer)M.timer=keepTimer;
-        const changed=!sameData(M,S);S=M;
+        if(!M.timer&&keepTimer&&!M.del[tmKey(keepTimer)])M.timer=keepTimer;
+        const changed=!sameData(M,S);S=M;dirty=false;
         // Si al unir hay algo que el otro dispositivo no tenía, se sube la versión unida
         if(sameData(M,R))S.updatedAt=d.updatedAt;else{S.updatedAt=Math.max(Date.now(),(d.updatedAt||0)+1);push()}
         try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-        if(changed&&!sheetOpen())render();maybeAskGrade()}catch(e){}
+        const gone=keepTimer&&!S.timer;if(gone){if($('#tt'))closeSheet();toast('Esa sesión ya se terminó en otro dispositivo')}
+        if((changed||gone)&&!sheetOpen())render();maybeAskGrade()}catch(e){}
       setSyncReady();
-    },()=>{syncState='err';setSyncReady()});
-  }catch(e){syncState='local';setSyncReady()}}
+    },()=>{syncState='err';cloudTry=false;setSyncReady()});
+  }catch(e){syncState='local';cloudTry=false;setSyncReady()}}
 
 /* ====== Materias ====== */
 const SUBJ=()=>S.subjects;
@@ -1128,7 +1139,10 @@ const need=n=>100+40*(n-1);
 const xpTot=()=>S.xp+sum(S.xpLog.map(x=>x.v));
 function lvl(){let x=xpTot(),n=1;while(x>=need(n)){x-=need(n);n++}return{n,x,need:need(n)}}
 const rank=n=>n<4?'Novato':n<7?'Aprendiz':n<10?'Constante':n<14?'Experto':n<19?'Maestro':'Leyenda';
-function addXP(v,why){const b=lvl().n;S.xpLog.push({id:uid(),v,d:today()});save();const a=lvl().n;toast(`+${v} XP · ${why}`+(a>b?` — subes a nivel ${a}`:''))}
+function addXP(v,why,id=uid()){const b=lvl().n;S.xpLog.push({id,v,d:today()});save();const a=lvl().n;toast(`+${v} XP · ${why}`+(a>b?` — subes a nivel ${a}`:''))}
+// Quita una XP ya dada (la de ese id o, en lo marcado antes de guardar el id, la última de ese valor)
+function takeXP(v,id){const xs=[...S.xpLog].reverse(),x=xs.find(y=>y.id===id)||xs.find(y=>y.v===v);if(!x)return 0;
+  S.xpLog=S.xpLog.filter(y=>y!==x);tomb('xp:'+x.id);return v}
 const graded=()=>S.events.filter(e=>e.kind==='examen'&&e.grade!=null);
 const totMin=()=>sum(S.log.map(l=>l.min));
 function bestStreak(){const ds=[...new Set(S.log.map(l=>l.date))].sort();let b=0,c=0,p=null;for(const d of ds){c=p&&diff(p,d)===1?c+1:1;b=Math.max(b,c);p=d}return b}
@@ -1200,7 +1214,7 @@ function nextClass(subj,from){for(let i=1;i<=14;i++){const d=addDays(from,i);if(
 /* ====== Carga de cada examen ====== */
 // Minutos totales que necesita un examen o tarea
 function needMin(e){
-  if(e.hours!=null)return Math.round(e.hours*60);
+  if(e.hours>0)return Math.round(e.hours*60);
   if(e.kind==='tarea')return 60;
   const t=sb(e.subj).target,m=(e.temas||1)*(HPT[e.subj]||HPT[ALIAS[e.subj]]||hptDef())*(LV[e.level||'normal'].m)*(t>=9?1.15:1);
   return Math.round(m*60/15)*15}
@@ -1221,7 +1235,8 @@ function topicNames(e){const tp=S.topics[e.subj]||[];if(!e.topicIds||!e.topicIds
    día), así que solo hay que decírselo al usuario (S.missed), para que se fíe del plan. */
 function snapPlan(){const t=today(),sn=S.planSnap;
   if(sn&&sn.day<t){const miss=(sn.blocks||[]).filter(b=>{const e=evById(b.ev);return !isDone(sn.day,b.key)&&e&&e.grade==null&&!e.done&&e.date>=t});
-    S.missed=miss.length?{day:t,from:sn.day,n:miss.length,min:sum(miss.map(b=>b.min)),subjs:[...new Set(miss.map(b=>b.subj))]}:null}
+    S.missed=miss.length?{day:t,from:sn.day,n:miss.length,min:sum(miss.map(b=>b.min)),subjs:[...new Set(miss.map(b=>b.subj))]}:null;
+    for(const k in S.planAt)if(k.slice(0,10)<addDays(t,-14))delete S.planAt[k]}
   const nw={day:t,blocks:planFor(t).blocks.filter(b=>b.eventId).map(b=>({key:b.key,ev:b.eventId,subj:b.subj,min:b.min}))};
   if(JSON.stringify(nw)!==JSON.stringify(sn)){S.planSnap=nw;save()}}
 function vMissed(){const M=S.missed,t=today();if(!M||M.day!==t||M.seen)return '';
@@ -1617,8 +1632,9 @@ function sesEndTxt(m){const nb=pomoBreaks(m),d=new Date(Date.now()+(m+nb*POMO.re
 function vSes(){
   if(S.timer)return `<div class="card ses"><div class="eyebrow">Estudiar ahora</div><div class="big" style="font-size:21px">Tienes una sesión en marcha</div>
     <div class="mut small" style="margin-bottom:14px">${h(sb(S.timer.subj).name)} · ${S.timer.min} min</div><button class="btn" data-act="timeropen">${ic('clock','s')} Volver al temporizador</button></div>`;
+  if(!SUBJ().length)return `<div class="card ses"><div class="eyebrow">Estudiar ahora</div>${hint('book','Aún no tienes materias','Añade una para ponerte a estudiar.',`<button class="btn sm" data-act="addsubj">${ic('plus','s')} Añadir materia</button>`)}</div>`;
   const t=today(),nb=planFor(t).blocks.find(b=>!isDone(t,b.key));
-  if(!SES.subj||!sb(SES.subj))SES.subj=nb?nb.subj:SUBJ()[0].id;
+  if(!isSubj(SES.subj))SES.subj=nb?nb.subj:SUBJ()[0].id;
   const m=S.sesMin||45;
   return `<div class="card ses"><div class="eyebrow">Estudiar ahora</div>
    <div class="chips" style="margin-top:12px">${SUBJ().map(s=>`<button class="${s.id===SES.subj?'on':''}" data-act="sesSubj" data-s="${s.id}"><span class="dot" style="background:${col(s)}"></span>${h(s.name)}</button>`).join('')}</div>
@@ -1640,7 +1656,7 @@ function creditToday(evId,min){if(!evId)return 0;const t=today();let n=0;
   for(const b of planFor(t).blocks.filter(b=>b.eventId===evId&&!isDone(t,b.key))){if(min<b.min*.6)break;markDone(t,b.key);min-=b.min;n++}
   return n}
 function openAdd(){
-  if(!ADD){const s=sb(SES.subj)?SES.subj:SUBJ()[0].id;ADD={subj:s,min:60,day:0,date:addDays(today(),-2),ev:subjEvs(s)[0]?.id||''}}
+  if(!ADD){const s=isSubj(SES.subj)?SES.subj:SUBJ()[0].id;ADD={subj:s,min:60,day:0,date:addDays(today(),-2),ev:subjEvs(s)[0]?.id||''}}
   const a=ADD,t=today(),evs=subjEvs(a.subj),m=a.min;
   sheet(`<div class="between"><h2 style="margin:0">Añadir tiempo estudiado</h2><button class="navb" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <div class="mut small" style="margin-top:6px">Para cuando estudias sin poner el cronómetro. Cuenta igual que una sesión.</div>
@@ -1725,7 +1741,7 @@ function vPlan(){
      ${isEx?`<button class="link left small minib" data-act="excdel" data-day="${planSel}">Volver a lo normal (${fmtMin(S.avail[w])})</button>`:''}
      <button class="link left small minib" style="color:var(--mut)" data-act="availedit">Cambiar todos los ${WDL[w]+(w===0||w===6?'s':'')}</button></div>
    ${P.over?`<div class="warnbox" style="margin-top:6px">${ic('alert','s')}<div>Este día el plan pide ${fmtMin(P.total-P.avail)} más de lo que tienes libre porque hay un examen cerca. Si no llegas, lo que falte se reparte en los días siguientes.</div></div>`:''}
-   ${P.blocks.length?`<div class="mut small" style="margin:4px 0 2px">Ordenado de más a menos importante</div>`+P.blocks.map((b,i)=>{const s=sb(b.subj),dn=isDone(planSel,b.key);return `<div class="item"><button class="check ${dn?'on':''}" data-act="tick" data-k="${h(b.key)}" data-d="${planSel}" aria-label="Hecho">${dn?ic('check','s'):''}</button>
+   ${P.blocks.length?`<div class="mut small" style="margin:4px 0 2px">Ordenado de más a menos importante</div>`+P.blocks.map((b,i)=>{const s=sb(b.subj),dn=isDone(planSel,b.key);return `<div class="item">${si===0?`<button class="check ${dn?'on':''}" data-act="tick" data-k="${h(b.key)}" data-d="${planSel}" aria-label="Hecho">${dn?ic('check','s'):''}</button>`:''}
       <div style="flex:1;min-width:0"><div style="font-weight:600;${dn?'color:var(--mut);text-decoration:line-through':''}"><span style="color:${dn?'var(--mut)':i===0?'var(--acc2)':'var(--mut)'};font-weight:800">${i+1}.</span> ${h(b.task)}</div><div class="mut small ell">${i===0&&!dn&&b.eventId?'<span class="pill hot" style="padding:2px 7px;font-size:11.5px;margin-right:6px">Prioridad</span>':''}<span class="dot" style="background:${col(s)};width:7px;height:7px"></span> ${h(s.name)} · ${b.min} min · ${h(b.info)}</div></div>
       ${si===0&&!dn?`<button class="btn icon" data-act="start" data-k="${h(b.key)}" aria-label="Empezar">${ic('play','s')}</button>`:''}</div>`}).join('')
      :`<div class="empty">${P.avail?'Nada que preparar este día.':'Día libre: lo que tocaba se reparte en los demás días.'}</div>`}</div>`;
@@ -1821,14 +1837,15 @@ function openXfer(){
    <label class="f" for="xin">Código del otro dispositivo</label>
    <textarea class="inp" id="xin" placeholder="Pega aquí el código (empieza por RUMBO)" style="height:80px;font-size:13px"></textarea>
    <button class="btn ${S.setup?'ghost':''}" style="margin-top:12px" data-act="xload">Cargar datos</button>`)}
-function importState(o){const R=hydrate(o);R.timer=null;
+function importState(o){const R=hydrate(o);R.timer=null;R.resetAt=S.resetAt;
   S=S.setup?hydrate(mergeStates(S,R)):R;S.setup=true;S.timer=null;save();closeSheet();tab='inicio';render();scrollTo(0,0);
   toast(S.name?`Datos cargados. ¡Hola, ${S.name}!`:'Datos cargados')}
 
 function openAnalysis(){
   const t=today(),m30=minsBy(addDays(t,-29),t),g=graded().sort((a,b)=>a.date<b.date?-1:1);
-  const W=300,H=90,pts=g.map((e,i)=>[g.length>1?10+i*(W-20)/(g.length-1):W/2,H-10-(e.grade-5)/5*(H-20)]);
-  const chart=g.length?`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin-top:6px">${[5,7.5,10].map(v=>{const y=H-10-(v-5)/5*(H-20);return `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${W}" y="${y-3}" fill="var(--dim)" font-size="10" text-anchor="end">${fmt(v,1).replace(',0','')}</text>`}).join('')}
+  // La escala baja si hay suspensos, para que ninguna nota se salga de la gráfica
+  const W=300,H=90,g0=Math.min(5,...g.map(e=>Math.floor(e.grade))),Yg=v=>H-10-(v-g0)/(10-g0)*(H-20),pts=g.map((e,i)=>[g.length>1?10+i*(W-20)/(g.length-1):W/2,Yg(e.grade)]);
+  const chart=g.length?`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin-top:6px">${[g0,(g0+10)/2,10].map(v=>{const y=Yg(v);return `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${W}" y="${y-3}" fill="var(--dim)" font-size="10" text-anchor="end">${fmt(v,1).replace(',0','')}</text>`}).join('')}
     ${g.length>1?`<polyline pathLength="1" points="${pts.map(p=>p.map(v=>Math.max(4,v)).join(',')).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>`:''}${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${Math.max(4,p[1])}" r="${i===pts.length-1?5:3.5}" fill="${col(sb(g[i].subj))}"/>`).join('')}</svg>`:'<div class="mut small">Aún no hay notas.</div>';
   const rows=SUBJ().map(s=>{const gs=subjGrades(s.id),a=subjAvg(s.id),tr=gs.length>1?gs[gs.length-1].grade-gs[gs.length-2].grade:null;
     return `<div class="item"><span class="letter" style="background:${col(s)};width:32px;height:32px;font-size:14px">${h(s.name[0])}</span><div style="flex:1;min-width:0"><div class="ell" style="font-weight:650">${h(s.name)}</div><div class="mut small">${fmtMin(m30[s.id]||0)} en 30 días${s.target!=null?' · objetivo '+fmt(s.target,1):''}</div></div>
@@ -1927,7 +1944,7 @@ function renderPau(){
   t.innerHTML=tg!=null&&r.adm!=null?`<div class="res"><span>${r.adm>=tg?'Te sobran':'Te faltan'}</span><b style="color:${r.adm>=tg?'var(--ok)':'var(--warn)'}">${fmt(Math.abs(r.adm-tg),3)}</b></div>`:''}
 
 /* ====== Hojas ====== */
-let onYes=null;
+let onYes=null,onNo=null;
 // Las hojas suben con su contenido escalonado y al cerrarse bajan; si se abre otra mientras baja, se cancela
 let closeT=null,openT=null;
 const sheetOpen=()=>$('#ov').classList.contains('on')&&!$('#ov').classList.contains('closing');
@@ -1944,8 +1961,9 @@ function closeSheet(){if(timerInt){clearInterval(timerInt);timerInt=null}
   sh.addEventListener('touchstart',e=>{if(sh.scrollTop>0||(S.timer&&$('#tt'))||e.target.closest('input,textarea,select'))return;d={y:e.touches[0].clientY,dy:0,t:Date.now()}},{passive:true});
   sh.addEventListener('touchmove',e=>{if(!d)return;d.dy=Math.max(0,e.touches[0].clientY-d.y);if(d.dy>4){sh.style.transition='none';sh.style.transform=`translateY(${d.dy}px)`}},{passive:true});
   sh.addEventListener('touchend',()=>{if(!d)return;const fast=d.dy>40&&Date.now()-d.t<250,dy=d.dy;d=null;
-    if(dy>120||fast){closeSheet();onYes=null}else{sh.style.transition='transform .3s var(--spring)';sh.style.transform=''}});})();
-function ask(msg,yes,fn){onYes=fn;sheet(`<h2>${h(msg)}</h2><div style="display:grid;gap:10px"><button class="btn danger" data-act="yes">${h(yes)}</button><button class="btn ghost" data-act="close">Cancelar</button></div>`)}
+    if(dy>120||fast)A.no();else{sh.style.transition='transform .3s var(--spring)';sh.style.transform=''}});})();
+// no = qué hacer al cancelar (por ejemplo, volver al temporizador); si no se pasa, solo se cierra
+function ask(msg,yes,fn,no){onYes=fn;onNo=no||null;sheet(`<h2>${h(msg)}</h2><div style="display:grid;gap:10px"><button class="btn danger" data-act="yes">${h(yes)}</button><button class="btn ghost" data-act="no">Cancelar</button></div>`)}
 function subjChips(sel){return `<div class="chips" id="sc">${SUBJ().map(s=>`<button class="${s.id===sel?'on':''}" data-act="pick" data-s="${s.id}"><span class="dot" style="background:${col(s)}"></span>${h(s.name)}</button>`).join('')}</div>`}
 const picked=()=>$('#sc .on')?.dataset.s;
 
@@ -2036,7 +2054,8 @@ function openAddSubj(){
 /* ====== Temporizador ====== */
 let timerInt=null,wake=null;
 const elapsed=()=>S.timer?S.timer.acc+(S.timer.paused?0:Date.now()-S.timer.start):0;
-function startTimer(b){S.timer={key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false,pomo:!!S.pomo,brks:0,brk:null,goals:b.goals||[]};save();openTimer()}
+function startTimer(b){if(S.timer){toast('Ya tienes una sesión en marcha');openTimer();return}
+  S.timer={id:uid(),key:b.key||null,day:today(),subj:b.subj,eventId:b.eventId||null,min:b.min,task:b.task,start:Date.now(),acc:0,paused:false,pomo:!!S.pomo,brks:0,brk:null,goals:b.goals||[]};save();openTimer()}
 // Objetivos de la sesión dentro del temporizador: se tachan al tocarlos
 const tGoalsHtml=T=>(T.goals||[]).map((g,i)=>`<div class="item tgoal"><button class="check ${g.done?'on':''}" data-act="tgoal" data-i="${i}" aria-label="Hecho">${g.done?ic('check','s'):''}</button><div style="flex:1;min-width:0;overflow-wrap:anywhere;${g.done?'color:var(--mut);text-decoration:line-through':''}">${h(g.t)}</div></div>`).join('');
 // Descansos (si están activados): cada X min de estudio, Y de descanso (25 y 5 si no se cambian; se ajustan
@@ -2091,7 +2110,7 @@ function openTimer(){
     tw.classList.toggle('brk',br!=null);tw.classList.toggle('paused',!!T.paused&&br==null);tw.classList.toggle('done',rem<0&&br==null)};
   tick();timerInt=setInterval(tick,500);
   try{navigator.wakeLock?.request('screen').then(w=>{wake=w}).catch(()=>{})}catch(e){}}
-function markDone(day,key){const arr=S.planDone[day]=S.planDone[day]||[];if(!arr.includes(key))arr.push(key);
+function markDone(day,key){const arr=S.planDone[day]=S.planDone[day]||[];if(!arr.includes(key))arr.push(key);S.planAt[key]=Date.now();
   if(day===today()){const bl=planFor(day).blocks;if(bl.length&&bl.every(b=>arr.includes(b.key))&&!S.perfect[day]){S.perfect[day]=1;setTimeout(()=>toast('Día perfecto: has completado todo el plan'),2800)}}}
 // Al desmarcar un bloque se deshace lo que sumó al marcarlo: su último apunte de estudio y su XP (minutos + 15).
 // Si no hay esa XP, el bloque se marcó de otra forma (sesión libre o tiempo añadido) y ese tiempo se queda.
@@ -2101,30 +2120,43 @@ function undoBlock(k){const l=[...S.log].reverse().find(x=>x.key===k);if(!l)retu
   S.log=S.log.filter(y=>y!==l);tomb('log:'+logKey(l));
   S.xpLog=S.xpLog.filter(y=>y!==x);tomb('xp:'+x.id);
   return v}
-function finishTimer(){
-  const T=S.timer,m=Math.max(1,Math.round(elapsed()/60000));
-  S.log.push({id:uid(),date:today(),subj:T.subj,min:m,eventId:T.eventId,key:T.key});
+function endTimer(){if(S.timer)tomb(tmKey(S.timer));S.timer=null;try{wake?.release()}catch(e){}}
+// Si lleva mucho más de lo previsto seguramente se olvidó pararlo: se pregunta cuánto contar
+function openOverTimer(m){const T=S.timer;onYes=null;onNo=()=>openTimer();
+  sheet(`<h2>¿Se te olvidó pararlo?</h2><div class="mut" style="margin-bottom:16px">Esta sesión era de ${fmtMin(T.min)} y lleva ${fmtMin(m)} en marcha. ¿Cuánto cuento?</div>
+   <div style="display:grid;gap:10px"><button class="btn" data-act="tfinishAs" data-m="${T.min}">Contar ${fmtMin(T.min)}</button>
+   ${m<=480?`<button class="btn ghost" data-act="tfinishAs" data-m="${m}">Contar todo (${fmtMin(m)})</button>`:''}
+   <button class="btn ghost" data-act="no">Seguir con la sesión</button>
+   <button class="link" style="color:var(--mut)" data-act="tcancel">Descartar sesión</button></div>`)}
+function finishTimer(mm){
+  const T=S.timer,m=mm||Math.max(1,Math.round(elapsed()/60000));
+  S.log.push({id:uid(),date:T.day||today(),subj:T.subj,min:m,eventId:T.eventId,key:T.key});
   let xp=m;if(T.key&&m>=T.min*0.6){markDone(T.day,T.key);xp+=15}
   else if(!T.key&&T.eventId&&T.day===today())xp+=15*creditToday(T.eventId,m);
   const gs=T.goals||[],gd=gs.filter(g=>g.done).length;
-  S.timer=null;try{wake?.release()}catch(e){}save();closeSheet();addXP(xp,`${fmtMin(m)} de ${sb(T.subj).name}`+(gs.length?` · ${gd} de ${gs.length} objetivos`:''));render()}
+  endTimer();save();closeSheet();addXP(xp,`${fmtMin(m)} de ${sb(T.subj).name}`+(gs.length?` · ${gd} de ${gs.length} objetivos`:''));render()}
 
 /* ====== Acciones ====== */
+// Sin materias no se puede crear nada: se pide añadir una
+const noSubj=()=>{if(SUBJ().length)return false;openAddSubj();return true};
 const A={
   tab:d=>{tab=d.t;try{localStorage.setItem(KEY+'.tab',tab)}catch(e){}closeSheet();render();scrollTo(0,0)},
-  quick:()=>openQuick(),close:()=>{closeSheet();onYes=null},yes:()=>{const f=onYes;onYes=null;closeSheet();f&&f()},
+  quick:()=>openQuick(),close:()=>{closeSheet();onYes=onNo=null},yes:()=>{const f=onYes;onYes=onNo=null;closeSheet();f&&f()},
+  no:()=>{const f=onNo;onYes=onNo=null;if(f)f();else closeSheet()},
   calmode:d=>{if(cal.mode===d.m)return;cal.mode=d.m;FX.calMode=1;render()},
   calmv:d=>{const n=+d.d;if(cal.mode==='week')cal.ref=addDays(cal.ref,7*n);else{const r=parse(cal.ref);cal.ref=iso(new Date(r.getFullYear(),r.getMonth()+n,1))}FX.cal=n>0?'l':'r';render()},
   calsel:d=>{if(cal.sel===d.d)return;cal.sel=d.d;FX.day=1;render()},
   start:d=>{const b=planFor(today()).blocks.find(x=>x.key===d.k);if(b)startTimer(b)},
   tick:d=>{const arr=S.planDone[d.d]=S.planDone[d.d]||[],i=arr.indexOf(d.k);
-    if(i>=0){arr.splice(i,1);delete S.perfect[d.d];const v=undoBlock(d.k);save();render();if(v)toast(`−${v} XP · bloque desmarcado`);return}
+    if(i>=0){arr.splice(i,1);S.planAt[d.k]=Date.now();delete S.perfect[d.d];const v=undoBlock(d.k);save();render();if(v)toast(`−${v} XP · bloque desmarcado`);return}
     FX.tick=d.k;
     const b=planFor(d.d).blocks.find(x=>x.key===d.k);markDone(d.d,d.k);
-    if(b&&d.d<=today()){S.log.push({id:uid(),date:today(),subj:b.subj,min:b.min,eventId:b.eventId,key:b.key});addXP(b.min+15,'bloque completado')}else save();render()},
-  grades:()=>openGradesList(),grade:d=>openGrade(d.id),newgrade:d=>openGrade(null,d.s),
+    // Solo se suma lo que falta del bloque: lo ya cronometrado de él (una sesión corta) no se cuenta dos veces
+    if(b&&d.d<=today()){const m=Math.max(0,b.min-sum(S.log.filter(l=>l.key===b.key).map(l=>l.min)));
+      S.log.push({id:uid(),date:today(),subj:b.subj,min:m,eventId:b.eventId,key:b.key});addXP(m+15,'bloque completado')}else save();render()},
+  grades:()=>openGradesList(),grade:d=>openGrade(d.id),newgrade:d=>{if(!noSubj())openGrade(null,d.s)},
   snooze:d=>{const e=evById(d.id);e.snooze=addDays(today(),3);e.u=Date.now();save();closeSheet();render();toast('Vale, te lo vuelvo a preguntar en unos días')},
-  newev:d=>openEvent(d.k,null,d.d),editev:d=>openEvent(null,d.id),
+  newev:d=>{if(!noSubj())openEvent(d.k,null,d.d)},editev:d=>openEvent(null,d.id),
   pick:(d,el)=>{el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));if(F&&d.s&&$('#estbox')){F.subj=d.s;renderTopicSel();updEst()}},
   temas:d=>{F.temas=Math.max(1,Math.min(20,F.temas+ +d.d));F.topicIds=[];renderTopicSel();$('#tnum').textContent=F.temas;updEst()},
   lv:(d,el)=>{F.level=d.k;el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));updEst()},
@@ -2141,7 +2173,8 @@ const A={
     if(ex&&e.grade==null&&date<today()){openGrade(e.id);return}
     toast(wasNew?`${ex?'Examen añadido':'Tarea añadida'}${date>=today()?' · plan actualizado':''}`:'Guardado')},
   delev:d=>ask('¿Eliminar este examen o tarea?','Eliminar',()=>{tomb('ev:'+d.id);S.events=S.events.filter(e=>e.id!==d.id);save();render()}),
-  evdone:d=>{const e=evById(d.id);e.done=!e.done;e.u=Date.now();save();closeSheet();if(e.done)addXP(20,'tarea entregada');render()},
+  evdone:d=>{const e=evById(d.id);e.done=!e.done;e.u=Date.now();closeSheet();
+    if(e.done){e.xp=uid();addXP(20,'tarea entregada',e.xp)}else{if(takeXP(20,e.xp))toast('−20 XP · tarea pendiente');delete e.xp;save()}render()},
   savegrade:d=>{const g=num($('#gv').value);if(g==null||g<0||g>10){toast('Pon una nota entre 0 y 10');return}
     const n=+$('#effs .on').dataset.n;let e;
     if(d.id)e=evById(d.id);else{e={id:uid(),kind:'examen',subj:picked(),title:$('#evt').value.trim()||'Examen',date:$('#evd').value||today(),temas:1,level:'normal'};S.events.push(e)}
@@ -2179,11 +2212,13 @@ const A={
   pomoset:d=>{const k=d.k==='w'?'pomoW':'pomoR',[lo,hi]=POMO_LIM[d.k],T=S.timer;S[k]=Math.max(lo,Math.min(hi,POMO[d.k==='w'?'work':'rest']+ +d.d));
     if(T&&d.k==='w')T.brks=Math.floor(elapsed()/60000/POMO.work);save();
     $('#pomo'+d.k).textContent=S[k]+' min';$('#pomotx').textContent=`${POMO.rest} min cada ${POMO.work} min de estudio`},
-  tfinish:()=>finishTimer(),
-  tcancel:()=>ask('¿Descartar esta sesión? No contará el tiempo.','Descartar',()=>{S.timer=null;save()}),
+  tfinish:()=>{const T=S.timer,m=Math.max(1,Math.round(elapsed()/60000));if(m>Math.max(T.min*2,T.min+60))openOverTimer(m);else finishTimer()},
+  tfinishAs:d=>{onNo=null;finishTimer(+d.m)},
+  tcancel:()=>ask('¿Descartar esta sesión? No contará el tiempo.','Descartar',()=>{endTimer();save();render()},()=>openTimer()),
   subj:d=>openSubj(d.id),
   tpa:d=>{const v=$('#tpin').value.trim();if(!v)return;(S.topics[d.s]=S.topics[d.s]||[]).push({id:uid(),t:v,done:false});save();openSubj(d.s);render();setTimeout(()=>$('#tpin')?.focus(),30)},
-  tpt:d=>{const x=S.topics[d.s].find(x=>x.id===d.id);x.done=!x.done;if(x.done)FX.tick=d.id;x.u=Date.now();save();if(x.done)addXP(10,'tema dominado');openSubj(d.s);render()},
+  tpt:d=>{const x=S.topics[d.s].find(x=>x.id===d.id);x.done=!x.done;x.u=Date.now();
+    if(x.done){FX.tick=d.id;x.xp=uid();addXP(10,'tema dominado',x.xp)}else{if(takeXP(10,x.xp))toast('−10 XP · tema sin dominar');delete x.xp;save()}openSubj(d.s);render()},
   tpd:d=>{tomb('tp:'+d.id);S.topics[d.s]=S.topics[d.s].filter(x=>x.id!==d.id);save();openSubj(d.s);render()},
   av:d=>{const w=+d.w;S.avail[w]=Math.max(0,Math.min(360,S.avail[w]+ +d.d));save();render();if(d.sh)openAvail()},
   avcopy:()=>{for(const w of [2,3,4,5])S.avail[w]=S.avail[1];save();render();openAvail();toast('Copiado de martes a viernes')},
@@ -2241,8 +2276,9 @@ const A={
     S.media2Manual=num($('#setm2').value);save();closeSheet();toast('Ajustes guardados');render()},
   savesubj:()=>{const n=$('#nsn').value.trim();if(!n){toast('Escribe el nombre de la materia');return}
     S.subjects.push({id:'c'+uid(),name:n,color:$('#ncol .on').dataset.c,target:null});save();closeSheet();render()},
-  delsubj:d=>ask('¿Quitar esta materia y sus exámenes?','Quitar',()=>{tomb('subj:'+d.id);S.events.filter(e=>e.subj===d.id).forEach(e=>tomb('ev:'+e.id));S.subjects=S.subjects.filter(s=>s.id!==d.id);S.events=S.events.filter(e=>e.subj!==d.id);
-    for(const w in S.sched)S.sched[w]=S.sched[w].map(c=>c===d.id?'':c);save();render()}),
+  delsubj:d=>{if(SUBJ().length<=1){toast('Necesitas al menos una materia');return}
+    ask('¿Quitar esta materia y sus exámenes?','Quitar',()=>{tomb('subj:'+d.id);S.events.filter(e=>e.subj===d.id).forEach(e=>tomb('ev:'+e.id));S.subjects=S.subjects.filter(s=>s.id!==d.id);S.events=S.events.filter(e=>e.subj!==d.id);
+    for(const w in S.sched)S.sched[w]=S.sched[w].map(c=>c===d.id?'':c);save();render()})},
   addmemo:()=>{const v=$('#memo').value.trim();if(!v)return;S.memos.push({id:uid(),t:v,date:today()});save();openBag();render()},
   delmemo:d=>{tomb('memo:'+d.id);S.memos=S.memos.filter(m=>m.id!==d.id);save();openBag();render()},
   upload:()=>$('#upf').click(),
@@ -2250,7 +2286,7 @@ const A={
   reset:()=>ask('Se borrarán todos tus datos en todos tus dispositivos. ¿Seguro?','Borrar todo',()=>{S=defaults();S.resetAt=Date.now();save();render()})
 };
 document.addEventListener('click',ev=>{
-  if(ev.target.id==='ov'){if(!S.timer||!$('#tt'))closeSheet();return}
+  if(ev.target.id==='ov'){if(onNo)A.no();else if(!S.timer||!$('#tt'))closeSheet();return}
   const t=ev.target.closest('[data-act]');if(!t)return;
   const f=A[t.dataset.act];if(f){ev.preventDefault();f(t.dataset,t)}});
 document.addEventListener('input',ev=>{
